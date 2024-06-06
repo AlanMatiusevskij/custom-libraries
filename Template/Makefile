@@ -1,0 +1,2 @@
+all:
+	i686-w64-mingw32-g++ -I src/include -L src/lib -o Program main.cpp -lmingw32 -lSDL2main -lSDL2 -lgdi32 -lfreetype ./src/include/PyCLink/pyclink.cpp ./src/include/custom/customCPP.cpp ./src/include/custom/customSDL.cpp
