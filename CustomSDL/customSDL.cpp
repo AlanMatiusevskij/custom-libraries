@@ -222,5 +222,9 @@ SDL_Texture* customsdl::UI::button(SDL_Renderer* renderer, SDL_Event &evt, std::
 }
 SDL_Texture* customsdl::UI::scrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::string &entry, int fontSize, void (*onClick)(std::string)){
 
-    //how do we do this mm
+}
+SDL_Texture* customsdl::UI::findExistingScrollBoxTexture(std::string &usedEntries, SDL_Rect usedBox){
+    for(_scrollBoxState_sruct &obj : __activeScrollBoxes){
+        
+    }
 }

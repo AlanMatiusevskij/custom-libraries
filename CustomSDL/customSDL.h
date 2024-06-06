@@ -78,10 +78,34 @@ namespace customsdl{
 ////////////////////
 
     class UI{
+    private:
+        //Stores state of scroll boxes.
+        struct _scrollBoxState_sruct{
+            int shiftX = 0;
+            int shiftY = 0;
+            SDL_Rect usedBox;
+            std::string usedEntries;
+        };
+        struct _activeTextFields_struct{
+            SDL_Texture* texture;
+            std::string sentence = "";
+            int lastAccessed = 0; //-frames/updates ago.
+            SDL_Rect dimensions;
+        };
+        struct _activeFaces_struct{
+            std::string path;
+            int fontSize;
+            FT_FaceRec_ *face;
+            FT_Library ft;
+        };     
+    
     public:
         UI(){
             for(int i = 0; i < 256; i++)
                 _8bitpalleteColors[i].r = _8bitpalleteColors[i].g = _8bitpalleteColors[i].b = _8bitpalleteColors[i].a = i;
+            __activeTexts.clear();
+            __activeFaces.clear();
+            __activeScrollBoxes.clear();
         }
 
         /**
@@ -117,10 +141,18 @@ namespace customsdl{
         */
         void renderText(SDL_Renderer* renderer, SDL_Texture *text);
 
+        //Contains information about the active UI class's text fields.
+        static std::vector<_activeTextFields_struct> __activeTexts;
+        //Information about active faces (-fonts).
+        static std::vector<_activeFaces_struct> __activeFaces;
+        //Inforamtion abotu the active UI class's
+        static std::vector<_scrollBoxState_sruct> __activeScrollBoxes;
+
     private:
         //add comments here
         FT_FaceRec* useFont(std::string path, int fontsize);
         SDL_Texture* findExistingTextTexture(std::string &sentence, SDL_Rect &textBox);
+        SDL_Texture* findExistingScrollBoxTexture(std::string &usedEntries, SDL_Rect usedBox);
         SDL_Surface* surf8bitTo32bit(SDL_Surface* _8bit);
 
         SDL_Rect *destination;
@@ -131,7 +163,7 @@ namespace customsdl{
         struct{
             SDL_Rect dimensions;
             int fontSize;
-        }lastTextInfo;
+        }lastTextInfo;                                     
     };
 
 ///////////////////
@@ -148,27 +180,7 @@ namespace customsdl{
         Uint8 b;
         Uint8 a;
     };
-    
-    struct _activeTextFields_struct{
-        SDL_Texture* texture;
-        std::string sentence = "";
-        int lastAccessed = 0; //-frames/updates ago.
-        SDL_Rect dimensions;
-    };
-    struct _activeFaces_struct{
-        std::string path;
-        int fontSize;
-        FT_FaceRec_ *face;
-        FT_Library ft;
-    };
 
-//////////////////////////////
-
-    //Contains information about the active UI class's text fields.
-    std::vector<_activeTextFields_struct> __activeTexts{};
-    //Information about active faces (-fonts).
-    std::vector<_activeFaces_struct> __activeFaces{};
-
-//////////////////////////////////////////////
+//////////////////////
 
 }
