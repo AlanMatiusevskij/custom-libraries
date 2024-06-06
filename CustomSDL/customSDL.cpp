@@ -210,3 +210,17 @@ SDL_Surface* customsdl::UI::surf8bitTo32bit(SDL_Surface* _8bit){
     SDL_FreeSurface(_8bit);
     return _return;
 }
+SDL_Texture* customsdl::UI::button(SDL_Renderer* renderer, SDL_Event &evt, std::string label, SDL_Rect buttonbox, int fontSize, std::string fontpath, void(*onClick)(void*), void* param){
+    if(evt.type == SDL_MOUSEBUTTONDOWN && evt.button.button == SDL_BUTTON_LEFT)
+        if(onRect(buttonbox))
+            onClick(param);
+    buttonbox.x+=2;
+    buttonbox.y+=2;
+    buttonbox.h-=2;
+    buttonbox.w-=2;
+    return textFieldTexture(renderer, label, buttonbox, fontSize, fontpath, false);
+}
+SDL_Texture* customsdl::UI::scrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::string &entry, int fontSize, void (*onClick)(std::string)){
+
+    //how do we do this mm
+}

@@ -95,8 +95,11 @@ namespace customsdl{
          * @note The given rect should be used to display the text within desired boundries by using `renderText` function from this class IMMEDIATELLY after calling this function.
         */
         SDL_Texture* textFieldTexture(SDL_Renderer *renderer, std::string sentence, SDL_Rect textBox, int fontsize, std::string fontpath, bool autoNewLines);
-        //Button
+        //COMMENT HERE
+        SDL_Texture* button(SDL_Renderer* renderer, SDL_Event &evt, std::string label, SDL_Rect buttonbox, int fontSize, std::string fontpath, void(*onClick)(void*), void* param);
         //Slider
+        //COMMENT HERE Button type
+        SDL_Texture* scrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::string &entry, int fontSize, void (*onClick)(std::string));
         //more...
 
         /**
@@ -115,6 +118,7 @@ namespace customsdl{
         void renderText(SDL_Renderer* renderer, SDL_Texture *text);
 
     private:
+        //add comments here
         FT_FaceRec* useFont(std::string path, int fontsize);
         SDL_Texture* findExistingTextTexture(std::string &sentence, SDL_Rect &textBox);
         SDL_Surface* surf8bitTo32bit(SDL_Surface* _8bit);
