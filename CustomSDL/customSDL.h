@@ -29,7 +29,7 @@ namespace customsdl{
     /**
      * Function to check if two rects are equal.
     */
-    bool checkIfRectsEqual(SDL_Rect rect1, SDL_Rect rect2);
+    bool checkIfRectsEqual(SDL_Rect &rect1, SDL_Rect &rect2);
 
 ////////////////////////////////////////////
 
@@ -79,18 +79,17 @@ namespace customsdl{
 
     class UI{
     private:
-        //Stores state of scroll boxes.
-        struct _scrollBoxState_sruct{
-            int shiftX = 0;
-            int shiftY = 0;
-            SDL_Rect usedBox;
-            std::string usedEntries;
-        };
+        SDL_Rect *destination;
+        std::vector<int> wordLength;
+        static SDL_Color _8bitpalleteColors[256];
+
         struct _activeTextFields_struct{
             SDL_Texture* texture;
-            std::string sentence = "";
+            std::string entry = "";
             int lastAccessed = 0; //-frames/updates ago.
             SDL_Rect dimensions;
+            //For scroll boxes
+            int shiftX = 0, shiftY = 0;
         };
         struct _activeFaces_struct{
             std::string path;
@@ -98,6 +97,18 @@ namespace customsdl{
             FT_FaceRec_ *face;
             FT_Library ft;
         };     
+
+        //add comments here
+        FT_FaceRec* useFont(std::string path, int fontsize);
+        _activeTextFields_struct* findExistingText(std::string &entry, SDL_Rect &textBox);
+        SDL_Surface* surf8bitTo32bit(SDL_Surface* _8bit);
+
+        //Information about the last created text field.  
+        static _activeTextFields_struct &lastTextFieldData;
+        //Contains information about the active UI class's text fields.
+        static std::vector<_activeTextFields_struct> __activeTexts;
+        //Information about active faces (-fonts).
+        static std::vector<_activeFaces_struct> __activeFaces;
     
     public:
         UI(){
@@ -105,7 +116,6 @@ namespace customsdl{
                 _8bitpalleteColors[i].r = _8bitpalleteColors[i].g = _8bitpalleteColors[i].b = _8bitpalleteColors[i].a = i;
             __activeTexts.clear();
             __activeFaces.clear();
-            __activeScrollBoxes.clear();
         }
 
         /**
@@ -123,7 +133,7 @@ namespace customsdl{
         SDL_Texture* button(SDL_Renderer* renderer, SDL_Event &evt, std::string label, SDL_Rect buttonbox, int fontSize, std::string fontpath, void(*onClick)(void*), void* param);
         //Slider
         //COMMENT HERE Button type
-        SDL_Texture* scrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::string &entry, int fontSize, void (*onClick)(std::string));
+        SDL_Texture* scrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::string &entry, int fontSize, std::string fontpath, void (*onClick)(std::string));
         //more...
 
         /**
@@ -139,31 +149,7 @@ namespace customsdl{
          * @param renderer the rendering target.
          * @param text the SDL_Texture pointer, which should be a returned pointer from `textFieldTexture()` function.
         */
-        void renderText(SDL_Renderer* renderer, SDL_Texture *text);
-
-        //Contains information about the active UI class's text fields.
-        static std::vector<_activeTextFields_struct> __activeTexts;
-        //Information about active faces (-fonts).
-        static std::vector<_activeFaces_struct> __activeFaces;
-        //Inforamtion abotu the active UI class's
-        static std::vector<_scrollBoxState_sruct> __activeScrollBoxes;
-
-    private:
-        //add comments here
-        FT_FaceRec* useFont(std::string path, int fontsize);
-        SDL_Texture* findExistingTextTexture(std::string &sentence, SDL_Rect &textBox);
-        SDL_Texture* findExistingScrollBoxTexture(std::string &usedEntries, SDL_Rect usedBox);
-        SDL_Surface* surf8bitTo32bit(SDL_Surface* _8bit);
-
-        SDL_Rect *destination;
-        std::vector<int> wordLength;
-        static SDL_Color _8bitpalleteColors[256];
-
-        //Size information about the last created text field.
-        struct{
-            SDL_Rect dimensions;
-            int fontSize;
-        }lastTextInfo;                                     
+        void renderText(SDL_Renderer* renderer, SDL_Texture *text);          
     };
 
 ///////////////////

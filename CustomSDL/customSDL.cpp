@@ -15,7 +15,7 @@ bool customsdl::onRect(SDL_Rect rect, int x, int y){
     if(rect.x <= x && rect.x + rect.w > x && rect.y <= y && rect.y + rect.h > y) return true;
     return false;
 }
-bool customsdl::checkIfRectsEqual(SDL_Rect rect1, SDL_Rect rect2){
+bool customsdl::checkIfRectsEqual(SDL_Rect &rect1, SDL_Rect &rect2){
     if(rect1.x == rect2.x && rect1.w == rect2.w && rect1.h == rect2.h && rect1.y == rect2.y) return true;
     return false;
 }
@@ -70,11 +70,11 @@ void customsdl::surfaceManipulation::blitSurface(SDL_Rect areaTO, SDL_Surface* f
 //UI class's function declarations.
 
 void customsdl::UI::renderText(SDL_Renderer* renderer, SDL_Texture *text, SDL_Rect textToRenderArea){
-    destination = &lastTextInfo.dimensions;
+    destination = &lastTextFieldData.dimensions;
     SDL_RenderCopy(renderer, text, &textToRenderArea, destination);
 }
 void customsdl::UI::renderText(SDL_Renderer* renderer, SDL_Texture *text){
-    destination = &lastTextInfo.dimensions;
+    destination = &lastTextFieldData.dimensions;
     SDL_RenderCopy(renderer, text, NULL, destination);
 }
 FT_FaceRec* customsdl::UI::useFont(std::string path, int fontsize){
@@ -98,19 +98,18 @@ FT_FaceRec* customsdl::UI::useFont(std::string path, int fontsize){
 
     return __activeFaces[i].face;
 }
-SDL_Texture* customsdl::UI::findExistingTextTexture(std::string &sentence, SDL_Rect &textBox){
-    for(_activeTextFields_struct &obj : __activeTexts){
-        if(obj.sentence == sentence && checkIfRectsEqual(textBox, obj.dimensions)){
-            obj.lastAccessed = 0;
-            return obj.texture;
-        }
-    }
+customsdl::UI::_activeTextFields_struct* customsdl::UI::findExistingText(std::string &entry, SDL_Rect &textBox){
+    for(_activeTextFields_struct &obj : __activeTexts)
+        if(obj.entry == entry)
+            if(checkIfRectsEqual(textBox, obj.dimensions)){
+                obj.lastAccessed = 0;
+                return &obj;
+            }
     return nullptr;
 }
-SDL_Texture* customsdl::UI::textFieldTexture(SDL_Renderer *renderer, std::string sentence, SDL_Rect textBox, int fontsize, std::string fontpath, bool autoNewLines){
-    SDL_Texture* textr = findExistingTextTexture(sentence, textBox);
-    if(textr != nullptr) return textr;
-    SDL_DestroyTexture(textr);
+SDL_Texture* customsdl::UI::textFieldTexture(SDL_Renderer *renderer, std::string entry, SDL_Rect textBox, int fontsize, std::string fontpath, bool autoNewLines){
+    _activeTextFields_struct* obj = findExistingText(entry, textBox);
+    if(obj != nullptr) return obj->texture;
 
     std::vector<std::string> words;
     std::string ind_word{""};
@@ -118,7 +117,7 @@ SDL_Texture* customsdl::UI::textFieldTexture(SDL_Renderer *renderer, std::string
     FT_FaceRec_* FACE = useFont(fontpath, fontsize);
 
     //Save each word and whitespaces in a vector
-    for(char symb : sentence){
+    for(char symb : entry){
         if(symb == ' '){
             words.push_back(ind_word);
             ind_word = "";
@@ -159,8 +158,6 @@ SDL_Texture* customsdl::UI::textFieldTexture(SDL_Renderer *renderer, std::string
     //Create a surface where the sentence will be stored.
     surfaceManipulation manip;
     manip.createSurface(maxWidth, maxHeight, 32, SDL_PIXELFORMAT_RGBA32);
-    lastTextInfo.dimensions = {textBox.x, textBox.y, maxWidth, maxHeight};
-    lastTextInfo.fontSize = fontsize;
 
     //Load each glyph surface and merge them into a single surface.
     int totalGlyphWidth = 1, totalWordWidth = 1;
@@ -199,7 +196,8 @@ SDL_Texture* customsdl::UI::textFieldTexture(SDL_Renderer *renderer, std::string
     }
     
     //Create a texture and store it.
-    __activeTexts.push_back({manip.createTextureAndDeleteSurface(renderer), sentence, 0, textBox});
+    __activeTexts.push_back({manip.createTextureAndDeleteSurface(renderer), entry, 0, textBox, 0, 0});
+    lastTextFieldData = __activeTexts[__activeTexts.size()-1];
     return __activeTexts[__activeTexts.size()-1].texture;
 }
 SDL_Surface* customsdl::UI::surf8bitTo32bit(SDL_Surface* _8bit){
@@ -220,11 +218,40 @@ SDL_Texture* customsdl::UI::button(SDL_Renderer* renderer, SDL_Event &evt, std::
     buttonbox.w-=2;
     return textFieldTexture(renderer, label, buttonbox, fontSize, fontpath, false);
 }
-SDL_Texture* customsdl::UI::scrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::string &entry, int fontSize, void (*onClick)(std::string)){
+SDL_Texture* customsdl::UI::scrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::string &entry, int fontSize, std::string fontpath, void (*onClick)(std::string)){
+    static int x, y;
+    static int clickedx, clickedy;
+    static bool clicked = false;
+    _activeTextFields_struct *obj = findExistingText(entry, box);
 
-}
-SDL_Texture* customsdl::UI::findExistingScrollBoxTexture(std::string &usedEntries, SDL_Rect usedBox){
-    for(_scrollBoxState_sruct &obj : __activeScrollBoxes){
-        
+    //create a texture.
+    if(obj == nullptr){
+        textFieldTexture(renderer, entry, box, fontSize, fontpath, false);
+        obj = &lastTextFieldData;
     }
+
+    //Scrolling functionallity
+        //Vertical
+        int bar_width = 8;
+        int bar_height = box.h*box.h/obj->dimensions.h;
+        SDL_Rect bar = {box.x+box.w, box.y+obj->shiftY, bar_width, bar_height};
+
+        if(evt.type == SDL_MOUSEBUTTONDOWN && evt.button.button == SDL_BUTTON_LEFT) if(onRect(bar)){clicked = true; SDL_GetMouseState(NULL, &clickedy);}
+        if(evt.type == SDL_MOUSEBUTTONUP && evt.button.button == SDL_BUTTON_LEFT) clicked = false;
+        if(clicked){
+            SDL_GetMouseState(NULL, &y);
+            obj->shiftY += y-clickedy;
+            clickedy = y;
+        }
+
+        //Horizontal
+        //todo...
+        
+    SDL_SetRenderDrawColor(renderer, 255,255,255,100);
+    SDL_RenderFillRect(renderer, &bar);
+
+    //Clicking functionallity. Check if function is a nulltpr.
+    //todo..
+    
+    return obj->texture;
 }
