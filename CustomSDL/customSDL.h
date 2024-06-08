@@ -129,11 +129,16 @@ namespace customsdl{
          * @note The given rect should be used to display the text within desired boundries by using `renderText` function from this class IMMEDIATELLY after calling this function.
         */
         SDL_Texture* textFieldTexture(SDL_Renderer *renderer, std::string sentence, SDL_Rect textBox, int fontsize, std::string fontpath, bool autoNewLines);
-        //COMMENT HERE
+        //Button
+        //todo comment
         SDL_Texture* button(SDL_Renderer* renderer, SDL_Event &evt, std::string label, SDL_Rect buttonbox, int fontSize, std::string fontpath, void(*onClick)(void*), void* param);
-        //Slider
-        //COMMENT HERE Button type
-        SDL_Texture* scrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::string &entry, int fontSize, std::string fontpath, void (*onClick)(std::string));
+        //Slider - scroll for a simple texture.
+        //todo comment
+        void TextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, SDL_Texture* texture);
+        //Slider - scroll box for buttons. If there's enough space, will start in a new line.
+        //todo (whats above ) and add comment.
+        void ButtonScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::vector<std::string> entries, int fontSize, std::String fontpath, void (*onClick)(std::string));
+
         //more...
 
         /**

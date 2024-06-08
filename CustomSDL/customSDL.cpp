@@ -218,10 +218,11 @@ SDL_Texture* customsdl::UI::button(SDL_Renderer* renderer, SDL_Event &evt, std::
     buttonbox.w-=2;
     return textFieldTexture(renderer, label, buttonbox, fontSize, fontpath, false);
 }
-SDL_Texture* customsdl::UI::scrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::string &entry, int fontSize, std::string fontpath, void (*onClick)(std::string)){
+void customsdl::UI::TextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, SDL_Texture* texture){
     static int x, y;
     static int clickedx, clickedy;
     static bool clicked = false;
+    static std::vector<std::pair<SDL_Rect, SDL_Texture*>> previous;
     _activeTextFields_struct *obj = findExistingText(entry, box);
 
     //create a texture.
