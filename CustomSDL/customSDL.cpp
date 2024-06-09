@@ -218,30 +218,34 @@ SDL_Texture* customsdl::UI::button(SDL_Renderer* renderer, SDL_Event &evt, std::
     buttonbox.w-=2;
     return textFieldTexture(renderer, label, buttonbox, fontSize, fontpath, false);
 }
-void customsdl::UI::TextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, SDL_Texture* texture){
+void customsdl::UI::TextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, SDL_Rect texturesDimensions,  SDL_Texture* texture){
     static int x, y;
     static int clickedx, clickedy;
     static bool clicked = false;
-    static std::vector<std::pair<SDL_Rect, SDL_Texture*>> previous;
-    _activeTextFields_struct *obj = findExistingText(entry, box);
+
+    _activeScrollBoxesStruct *obj = findExistingScrollBox(texture, boxToRenderIn);
 
     //create a texture.
     if(obj == nullptr){
-        textFieldTexture(renderer, entry, box, fontSize, fontpath, false);
-        obj = &lastTextFieldData;
+        __activeScrollBoxes.push_back({texture, boxToRenderIn, texturesDimensions, 0, 0, 0});
+        obj = &__activeScrollBoxes[__activeScrollBoxes.size()-1];
     }
+
+    //todo
+    // save information below to the struct.
 
     //Scrolling functionallity
         //Vertical
+        double ratio = texturesDimensions.h/boxToRenderIn.h;
         int bar_width = 8;
-        int bar_height = box.h*box.h/obj->dimensions.h;
-        SDL_Rect bar = {box.x+box.w, box.y+obj->shiftY, bar_width, bar_height};
+        int bar_height = boxToRenderIn.h*boxToRenderIn.h/texturesDimensions.h;
+        SDL_Rect bar = {boxToRenderIn.x+boxToRenderIn.w, boxToRenderIn.y+obj->shifty, bar_width, bar_height};
 
         if(evt.type == SDL_MOUSEBUTTONDOWN && evt.button.button == SDL_BUTTON_LEFT) if(onRect(bar)){clicked = true; SDL_GetMouseState(NULL, &clickedy);}
         if(evt.type == SDL_MOUSEBUTTONUP && evt.button.button == SDL_BUTTON_LEFT) clicked = false;
         if(clicked){
             SDL_GetMouseState(NULL, &y);
-            obj->shiftY += y-clickedy;
+            obj->shifty += y-clickedy;
             clickedy = y;
         }
 
@@ -250,9 +254,17 @@ void customsdl::UI::TextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL
         
     SDL_SetRenderDrawColor(renderer, 255,255,255,100);
     SDL_RenderFillRect(renderer, &bar);
-
-    //Clicking functionallity. Check if function is a nulltpr.
-    //todo..
     
-    return obj->texture;
+    SDL_Rect renderArea = {texturesDimensions.x, texturesDimensions.y + ratio*obj->shifty, texturesDimensions.w, texturesDimensions.h};
+    //todo.. fix scaling to the whole boxToRenderIn.
+    SDL_RenderCopy(renderer, texture, &renderArea, &boxToRenderIn);
+
+    return;
 }
+ customsdl::UI::_activeScrollBoxesStruct* customsdl::UI::findExistingScrollBox(SDL_Texture *texture, SDL_Rect &rect){
+    for(_activeScrollBoxesStruct &obj : __activeScrollBoxes)
+        if(obj.texture == texture)
+            if(checkIfRectsEqual(obj.renderBox, rect))
+                return &obj;
+    return nullptr;
+ }

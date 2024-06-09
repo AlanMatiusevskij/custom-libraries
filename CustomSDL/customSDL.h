@@ -97,10 +97,18 @@ namespace customsdl{
             FT_FaceRec_ *face;
             FT_Library ft;
         };     
+        struct _activeScrollBoxesStruct{
+            SDL_Texture *texture;
+            SDL_Rect renderBox;
+            SDL_Rect dimensions;
+            int lastAccessed = 0;
+            int shiftx = 0, shifty = 0;
+        };
 
         //add comments here
         FT_FaceRec* useFont(std::string path, int fontsize);
         _activeTextFields_struct* findExistingText(std::string &entry, SDL_Rect &textBox);
+        _activeScrollBoxesStruct* findExistingScrollBox(SDL_Texture *texture, SDL_Rect &rect);
         SDL_Surface* surf8bitTo32bit(SDL_Surface* _8bit);
 
         //Information about the last created text field.  
@@ -109,6 +117,8 @@ namespace customsdl{
         static std::vector<_activeTextFields_struct> __activeTexts;
         //Information about active faces (-fonts).
         static std::vector<_activeFaces_struct> __activeFaces;
+        //Information about active scroll boxes.
+        static std::vector<_activeScrollBoxesStruct> __activeScrollBoxes;
     
     public:
         UI(){
@@ -116,6 +126,7 @@ namespace customsdl{
                 _8bitpalleteColors[i].r = _8bitpalleteColors[i].g = _8bitpalleteColors[i].b = _8bitpalleteColors[i].a = i;
             __activeTexts.clear();
             __activeFaces.clear();
+            __activeScrollBoxes.clear();
         }
 
         /**
@@ -134,10 +145,10 @@ namespace customsdl{
         SDL_Texture* button(SDL_Renderer* renderer, SDL_Event &evt, std::string label, SDL_Rect buttonbox, int fontSize, std::string fontpath, void(*onClick)(void*), void* param);
         //Slider - scroll for a simple texture.
         //todo comment
-        void TextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, SDL_Texture* texture);
+        void TextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, SDL_Rect texturesDimensions, SDL_Texture* texture);
         //Slider - scroll box for buttons. If there's enough space, will start in a new line.
         //todo (whats above ) and add comment.
-        void ButtonScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::vector<std::string> entries, int fontSize, std::String fontpath, void (*onClick)(std::string));
+        void ButtonScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect box, std::vector<std::string> entries, int fontSize, std::string fontpath, void (*onClick)(std::string));
 
         //more...
 
