@@ -112,7 +112,7 @@ namespace customsdl{
     class UI{
     private:
         //Data types and functions.
-        color _8bitpalletecolors[256];
+        SDL_Color _8bitpalletecolors[256];
 
         struct activeFaces_struct{
             std::string path;
@@ -179,7 +179,7 @@ namespace customsdl{
             struct{
                 SDL_Texture *texture = nullptr;
                 SDL_Surface *surface = nullptr;
-
+                
                 std::string text;
                 SDL_Rect textDimensions;
                 SDL_Rect TextBox;
@@ -218,7 +218,7 @@ namespace customsdl{
             int clickedx, clickedy;
             bool clicked = false;
 
-            void scrollBoxCore(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int textureWidth, int textureHeight, SDL_Texture *texture);
+            void scrollBoxCore(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int *textureWidth, int *textureHeight, SDL_Texture *texture);
         public:
             int bar_width = 8;
             color bar_color = {255,255,255,100};
@@ -229,11 +229,11 @@ namespace customsdl{
             /**
              * TODO
              */
-            void renderTextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int textureWidth, int textureHeight, SDL_Texture *texture);
+            void renderTextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int *textureWidth, int *textureHeight, SDL_Texture *texture);
             /**
              * TODO
              */
-            void renderButtonScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int textureWidth, int textureHeight, SDL_Texture *texture, void (*onClick)(std::string), std::vector<std::string> entries, int fontSize, std::string fontpath);
+            void renderButtonScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int *textureWidth, int *textureHeight, SDL_Texture *texture, void (*onClick)(std::string), std::vector<std::string> entries, int fontSize, std::string fontpath);
         };
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
