@@ -2,7 +2,7 @@
 #define CUSTOMSDL_H
 
 //Include standard libraries and custom c++ functions and classes.
-#include "customCPP.h"
+#include <CustomCPP/customCPP.h>
 
 //Include SDL itself.
 #include<SDL2/SDL.h>

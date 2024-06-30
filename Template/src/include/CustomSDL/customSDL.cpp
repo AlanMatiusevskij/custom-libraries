@@ -1,11 +1,10 @@
-#include "customSDL.h"
+#include <CustomSDL/customSDL.h>
 
 //////////////////////
 
 SDL_Surface *customsdl::UI::text::getSurface(SDL_Renderer *renderer, std::string text, SDL_Rect textBox, int fontsize, std::string fontpath, bool autoNewLines){
-    if(last.text == text && compareRects(textBox, last.TextBox) && last.fontsize == fontsize && last.fontpath == fontpath && last.autonewlines == autoNewLines)
+    if(last.text == text && compareRects(textBox, last.TextBox) && last.fontsize == fontsize && last.fontpath == fontpath && last.autonewlines == autoNewLines && last.surface != nullptr)
         return last.surface;
-
     wordLength.clear();
     SDL_DestroyTexture(last.texture);
     SDL_FreeSurface(last.surface);
@@ -93,6 +92,7 @@ SDL_Surface *customsdl::UI::text::getSurface(SDL_Renderer *renderer, std::string
         totalGlyphWidth+=fontsize/4;
     }
     
+    SDL_UnlockSurface(manip.active_surface);
     //Create a texture and store it.
     last.surface = manip.active_surface;
     last.autonewlines = autoNewLines;
@@ -106,12 +106,11 @@ SDL_Surface *customsdl::UI::text::getSurface(SDL_Renderer *renderer, std::string
 }
 
  SDL_Texture *customsdl::UI::text::getTexture(SDL_Renderer *renderer, std::string text, SDL_Rect textBox, int fontsize, std::string fontpath, bool autoNewLines){
-    if(last.text == text && compareRects(textBox, last.TextBox) && last.fontsize == fontsize && last.fontpath == fontpath && last.autonewlines == autoNewLines && last.texture != nullptr);
+    if(last.text == text && compareRects(textBox, last.TextBox) && last.fontsize == fontsize && last.fontpath == fontpath && last.autonewlines == autoNewLines && last.texture != nullptr)
         return last.texture;
-    SDL_Surface *surf = getSurface(renderer, text, textBox, fontsize, fontpath, autoNewLines);
-    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surf);
-
-    return texture;
+    last.texture = SDL_CreateTextureFromSurface(renderer, getSurface(renderer, text, textBox, fontsize, fontpath, autoNewLines));
+    if(last.texture == NULL) std::cout <<"?";
+    return last.texture;
  }
 
 SDL_Surface* customsdl::UI::surf8bitTo32bit(SDL_Surface* _8bit){
@@ -130,7 +129,7 @@ void customsdl::UI::text::renderText(SDL_Renderer *renderer, std::string text, S
         dest.x = textBox.x + textBox.w/2 - last.textDimensions.w/2;
         dest.y = textBox.y + textBox.y/2 - last.textDimensions.y/2;
     }
-    SDL_RenderCopy(renderer, last.texture, &last.textDimensions, &dest);
+    SDL_RenderCopy(renderer, last.texture, NULL, &dest);
     return;
 }
 
