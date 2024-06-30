@@ -2,7 +2,7 @@
 #define CUSTOMSDL_H
 
 //Include standard libraries and custom c++ functions and classes.
-#include "customCPP.h"
+#include <CustomCPP/customCPP.h>
 
 //Include SDL itself.
 #include<SDL2/SDL.h>
@@ -112,7 +112,7 @@ namespace customsdl{
     class UI{
     private:
         //Data types and functions.
-        color _8bitpalletecolors[256];
+        SDL_Color _8bitpalletecolors[256];
 
         struct activeFaces_struct{
             std::string path;
@@ -130,7 +130,7 @@ namespace customsdl{
         SDL_Surface* surf8bitTo32bit(SDL_Surface* _8bit);
 
         /**
-         * Returns an already loaded font or initializes a new one.
+         * Returns an already loaded true type font or initializes a new one.
          */
         FT_FaceRec* useFont(std::string path, int fontsize);
 
@@ -145,7 +145,7 @@ namespace customsdl{
         class button{
         public:
             color outline_color = {255,255,255,255};
-            color hovered_color = {0,0,0,100};
+            color hovered_color = {0,0,0,60};
 
             /**
              * The core functionallity of a button.
@@ -157,13 +157,13 @@ namespace customsdl{
             void CoreButton(SDL_Event &evt, SDL_Rect rect, void (*onClick)(void*), void* data);
 
             /**
-             * Renders the button and applies colors when hovered. Calls CoreButton function.
+            * Renders the button and applies colors when hovered. Functions as a button.
              * @param renderer the rendering target.
              * @param evt sdl event structure.
              * @param rect button area.
              * @param onClick the function to call on click.
              * @param data the void-pointer data to pass to the function.
-             * @param texture to render in the button.
+             * @param texture a texture stretched to fill the space inside the button.
              */
             void renderButton(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect rect, void (*onClick)(void*), void* data, SDL_Texture* texture);
         };
@@ -179,7 +179,7 @@ namespace customsdl{
             struct{
                 SDL_Texture *texture = nullptr;
                 SDL_Surface *surface = nullptr;
-
+                
                 std::string text;
                 SDL_Rect textDimensions;
                 SDL_Rect TextBox;
@@ -201,8 +201,8 @@ namespace customsdl{
              * @param renderer the rendering target.
              * @param text the text to use.
              * @param textBox the box in which the text will be displayed. (Note on `autoNewLines`)
-             * @param fontsize font size.
-             * @param fontpath the path to the .ttf (true type font) file. Should be relative to the application.
+             * @param fontSize the size of the font (the value appears to be equal to the height of the symbols in pixels).
+             * @param fontPath the path to the true type font (.ttf).
              * @param autoNewLines `true` if function should automatically write words in a new line instead of clipping. Note that, if it is `false`, the texture will scale to fit the whole text, but it will not automatically create a new line.
              * @return A pointer to the SDL_Texture structure.
             */
@@ -217,23 +217,57 @@ namespace customsdl{
             int shiftx=0, shifty=0;
             int clickedx, clickedy;
             bool clicked = false;
+            double ratioy{}, ratiox{};
+            
+            //For button function
+            std::vector<std::string> prev_in{};
+            std::string prev_compact_in{};
 
-            void scrollBoxCore(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int textureWidth, int textureHeight, SDL_Texture *texture);
+            void scrollBoxCore(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int *textureWidth, int *textureHeight, SDL_Texture *texture);
         public:
+            /**
+             * `True` if you want to render the outlines and `false` if you don't.
+             */
+            bool renderOutlines = true;
+
+            /**
+             * If `false`, the given names of buttons in `entries` parameter of `renderButtonScrollBox(...)` function will not be displayed.
+             * This is useful when the names of the buttons, should have a different value to what is displayed (because of this bad design).
+             * 
+             * For example, you can overlap `renderTextureScrollBox` with a text texture containing the last folder name of each directory and `renderButtonScrollBox` with a vector of directory names.
+             * When `renderButtonText` is false, the full directories will not be displayed and a user will only see the folder names, while cliking on a button will pass the full directory path to a function.
+             * Note that font and rect values should be the same for both functions.
+             */
+            bool renderButtonText = true;
+
             int bar_width = 8;
             color bar_color = {255,255,255,100};
             color outline_color = {255, 255, 255, 255};
-            color button_hovered = {0,0,0,200};
-            double ratio{};
+            color button_hovered = {0,0,0,50};
 
             /**
-             * TODO
+             * Allows to scroll vertically and horizontally through a provided texture, on a condition, that the texture's size exceeds the given `boxToRenderIn` dimensions. 
+             * Useful for large blocks of texts, images.
+             * @param renderer the rendering target.
+             * @param evt the sdl event structure.
+             * @param boxToRenderIn the largest area the texture can fill.
+             * @param textureWidth a pointer width of the texture.
+             * @param textureHeight a pointer to the height of the texture.
+             * @param texture the texture pointer you want to display.
              */
-            void renderTextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int textureWidth, int textureHeight, SDL_Texture *texture);
+            void renderTextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int *textureWidth, int *textureHeight, SDL_Texture *texture);
             /**
-             * TODO
+             * Creates a vertically scrollable list of buttons.
+             * @param renderer the rendering target.
+             * @param evt the sdl event structure.
+             * @param uiObj a pointer to an exsiting UI class object.
+             * @param boxToRenderIn the largest area the texture can fill.
+             * @param entries a vector array of all `entries`. Each entry is a single row and a single button. `\n`s within strings are ignored.
+             * @param fontSize the size of the font (the value appears to be equal to the height of the symbols in pixels).
+             * @param fontPath the path to the true type font (.ttf).
+             * @param onClick() a function passed by reference to call on button click. The button's string value will be passed to the funcition.
              */
-            void renderButtonScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int textureWidth, int textureHeight, SDL_Texture *texture, void (*onClick)(std::string), std::vector<std::string> entries, int fontSize, std::string fontpath);
+            void renderButtonScrollBox(SDL_Renderer *renderer, SDL_Event &evt, customsdl::UI *uiObj, SDL_Rect boxToRenderIn, std::vector<std::string> entries, int fontSize, std::string fontpath, void (*onClick)(std::string));
         };
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,7 @@
 /**
  * Custom functions and classes that are useful for various c++ application.
 */
-#include"customCPP.h"
+#include<CustomCPP/customCPP.h>
 
 /////////////////////
 //Function to get updates per second:
@@ -22,7 +22,6 @@ int customcpp::upsAverage(bool _cout){
 }
 
 /////////////////////
-//Number to string (and vice-versa) conversion functions:
 
 std::string customcpp::intToString(int numb){
     std::string _return_backwards = "";
@@ -98,4 +97,25 @@ double stringToDouble(std::string in){
     return _return;
 }
 
-///////////////////
+wchar_t* customcpp::charToLPWSTR(const char* charArr){
+    int length = MultiByteToWideChar(CP_UTF8, 0, charArr, -1, nullptr, 0);
+    wchar_t* wideChar = new wchar_t[length];
+
+    MultiByteToWideChar(CP_UTF8, 0, charArr, -1, wideChar, length);
+
+    return wideChar;
+}
+
+////////////////////
+
+char* customcpp::append_char_p(const char* array, const char* to_add){
+    size_t length = strlen(array) + strlen(to_add);
+    char* _return = new char[length + 1];
+
+    strcpy(_return, array);
+    for(int i = 0; i < strlen(to_add); i++)
+        _return[i + strlen(array)] = to_add[i];
+    _return[length] = '\0';
+
+    return _return;        
+}

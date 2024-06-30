@@ -12,11 +12,17 @@
 #include<filesystem>
 #include<algorithm>
 
+//Windows libraries
+#define NOMINMAX
+#include<Windows.h>
+#include<memoryapi.h>
+
 ///////////////////
 
 namespace customcpp{
     /**
      * Returns the -almost- exact number of updates per second.
+     * This function should be called once per update in your main loop.
      * @param _cout `true` if you want to get a console message: `UPS: upsValue`.
     */
     int upsAverage(bool _cout);
@@ -51,7 +57,24 @@ namespace customcpp{
     */
     double stringToDouble(std::string in);
 
-//////////////////////////////////////////
+    /** 
+     * TODO: a memory leak?
+     * Converts a char* to LPWSTR (wchar_t*) type.
+     * @param charArr the pointer to a char array to convert.
+     * @return returns converted array. 
+    */
+    wchar_t* charToLPWSTR(const char* charArr);
+
+///////////////////////////////////////////////
+
+    /** 
+     * TODO: a memory leak?
+     * Append char* to a given character array.
+     * @param array the char* object to which `to_add` is appended.
+     * @param to_add the data to append.
+     * @return Returns a new char* with the appended characters.
+    */
+    char* append_char_p(const char* array, const char* to_add);
 
 }
 

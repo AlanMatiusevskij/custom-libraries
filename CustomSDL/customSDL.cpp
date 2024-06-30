@@ -1,11 +1,10 @@
-#include "customSDL.h"
+#include <CustomSDL/customSDL.h>
 
-//////////////////////
+////////////////////////////////
 
 SDL_Surface *customsdl::UI::text::getSurface(SDL_Renderer *renderer, std::string text, SDL_Rect textBox, int fontsize, std::string fontpath, bool autoNewLines){
-    if(last.text == text && compareRects(textBox, last.TextBox) && last.fontsize == fontsize && last.fontpath == fontpath && last.autonewlines == autoNewLines)
+    if(last.text == text && compareRects(textBox, last.TextBox) && last.fontsize == fontsize && last.fontpath == fontpath && last.autonewlines == autoNewLines && last.surface != nullptr)
         return last.surface;
-
     wordLength.clear();
     SDL_DestroyTexture(last.texture);
     SDL_FreeSurface(last.surface);
@@ -17,7 +16,11 @@ SDL_Surface *customsdl::UI::text::getSurface(SDL_Renderer *renderer, std::string
 
     //Save each word and whitespaces in a vector
     for(char symb : text){
-        if(symb == ' '){
+        if(symb == '\n'){
+            words.push_back(ind_word);
+            ind_word = "\n";
+        }
+        else if(symb == ' '){
             words.push_back(ind_word);
             ind_word = "";
         }
@@ -38,13 +41,9 @@ SDL_Surface *customsdl::UI::text::getSurface(SDL_Renderer *renderer, std::string
             FT_Load_Char(FACE, symb, FT_LOAD_BITMAP_METRICS_ONLY);
             cWidth+=FACE->glyph->bitmap.width;
             wordWidth+=FACE->glyph->bitmap.width;
-
-            if(autoNewLines && cWidth >= textBox.w || symb == '\n'){
-                cHeight+=fontsize+1;
-                cWidth-=wordWidth;
-                maxWidth = std::max(maxWidth, cWidth);
-
-                cWidth = wordWidth;
+            if((autoNewLines && cWidth >= textBox.w) || symb == '\n'){
+                cHeight += fontsize+1;
+                cWidth = wordWidth+1;
             }
         }
         wordLength.push_back(wordWidth);
@@ -57,40 +56,30 @@ SDL_Surface *customsdl::UI::text::getSurface(SDL_Renderer *renderer, std::string
     //Create a surface where the sentence will be stored.
     surfaceManipulation manip;
     manip.createSurface(maxWidth, maxHeight, 32, SDL_PIXELFORMAT_RGBA32);
+    SDL_UnlockSurface(manip.active_surface);
 
     //Load each glyph surface and merge them into a single surface.
-    int totalGlyphWidth = 1, totalWordWidth = 1;
-    int totalHeight = 1;
-
+    cWidth = 1; cHeight = 1;
     int belowBaseLine{};
 
     for(int i = 0; i < words.size(); i++){
-        if(autoNewLines && i != 0 && totalWordWidth+wordLength[i] >= textBox.w){
-            totalHeight+=fontsize+1;
-            totalWordWidth = 1;
-            totalGlyphWidth = 1;
+        if((autoNewLines && i != 0 && cWidth+wordLength[i] >= textBox.w) || (words[i][0] == '\n' && i!=0)){
+            cHeight+=fontsize+1;
+            cWidth = 1;
         }
         for(char symb : words[i]){
             FT_Load_Char(FACE, symb, FT_LOAD_RENDER);
             belowBaseLine = (FACE->glyph->metrics.height - FACE->glyph->metrics.horiBearingY)/55;
             SDL_Surface *glyph;
 
-            if(autoNewLines && totalGlyphWidth >= textBox.w || symb == '\n'){
-                totalHeight+=fontsize+1;
-                totalGlyphWidth = 1;
-                totalWordWidth = 1;
-            }
-            
             glyph = parent_class.surf8bitTo32bit(SDL_CreateRGBSurfaceFrom(FACE->glyph->bitmap.buffer, FACE->glyph->bitmap.width, FACE->glyph->bitmap.rows, 8, FACE->glyph->bitmap.pitch, 0, 0, 0, 0xFF));
-            blitSurface({totalGlyphWidth, totalHeight-glyph->h+fontsize-fontsize/5+belowBaseLine}, manip.active_surface, glyph);
+            blitSurface({cWidth, cHeight-glyph->h+fontsize-fontsize/5+belowBaseLine}, manip.active_surface, glyph);
             SDL_FreeSurface(glyph);
 
             //Update some info.
-            totalGlyphWidth+=FACE->glyph->bitmap.width;
-            totalWordWidth+=FACE->glyph->bitmap.width;
+            cWidth+=FACE->glyph->bitmap.width;
         }
-        totalWordWidth+=fontsize/4;
-        totalGlyphWidth+=fontsize/4;
+        cWidth+=fontsize/4;
     }
     
     //Create a texture and store it.
@@ -106,16 +95,14 @@ SDL_Surface *customsdl::UI::text::getSurface(SDL_Renderer *renderer, std::string
 }
 
  SDL_Texture *customsdl::UI::text::getTexture(SDL_Renderer *renderer, std::string text, SDL_Rect textBox, int fontsize, std::string fontpath, bool autoNewLines){
-    if(last.text == text && compareRects(textBox, last.TextBox) && last.fontsize == fontsize && last.fontpath == fontpath && last.autonewlines == autoNewLines && last.texture != nullptr);
+    if(last.text == text && compareRects(textBox, last.TextBox) && last.fontsize == fontsize && last.fontpath == fontpath && last.autonewlines == autoNewLines && last.texture != nullptr)
         return last.texture;
-    SDL_Surface *surf = getSurface(renderer, text, textBox, fontsize, fontpath, autoNewLines);
-    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surf);
-
-    return texture;
+    last.texture = SDL_CreateTextureFromSurface(renderer, getSurface(renderer, text, textBox, fontsize, fontpath, autoNewLines));
+    return last.texture;
  }
 
 SDL_Surface* customsdl::UI::surf8bitTo32bit(SDL_Surface* _8bit){
-    SDL_SetPaletteColors(_8bit->format->palette, (SDL_Color*)_8bitpalletecolors, 0, 256);
+    SDL_SetPaletteColors(_8bit->format->palette, _8bitpalletecolors, 0, 256);
     SDL_SetSurfaceBlendMode(_8bit, SDL_BlendMode::SDL_BLENDMODE_ADD); 
     SDL_Surface* _return = SDL_ConvertSurfaceFormat(_8bit, SDL_PIXELFORMAT_RGBA32, 0);
 
@@ -130,23 +117,42 @@ void customsdl::UI::text::renderText(SDL_Renderer *renderer, std::string text, S
         dest.x = textBox.x + textBox.w/2 - last.textDimensions.w/2;
         dest.y = textBox.y + textBox.y/2 - last.textDimensions.y/2;
     }
-    SDL_RenderCopy(renderer, last.texture, &last.textDimensions, &dest);
+    dest.w = last.textDimensions.w;
+    dest.h = last.textDimensions.h;
+    SDL_RenderCopy(renderer, last.texture, NULL, &dest);
     return;
 }
 
-void customsdl::UI::scrollBox::renderTextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int textureWidth, int textureHeight, SDL_Texture *texture){
+void customsdl::UI::scrollBox::renderTextureScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int *textureWidth, int *textureHeight, SDL_Texture *texture){
     scrollBoxCore(renderer, evt, boxToRenderIn, textureWidth, textureHeight, texture);
 
-    SDL_SetRenderDrawColor(renderer, outline_color.r, outline_color.g, outline_color.b, outline_color.a);
-    SDL_RenderDrawRect(renderer, &boxToRenderIn);
+    if(renderOutlines){
+        SDL_SetRenderDrawColor(renderer, outline_color.r, outline_color.g, outline_color.b, outline_color.a);
+        SDL_RenderDrawRect(renderer, &boxToRenderIn);
+    }
 
-    SDL_Rect renderArea = {boxToRenderIn.x, int(boxToRenderIn.y +shifty*ratio), textureWidth, textureHeight};
-    SDL_RenderCopy(renderer, texture, &renderArea, &boxToRenderIn);
+    SDL_Rect renderArea = {int(shiftx*ratiox), int(shifty*ratioy), *textureWidth, std::min(boxToRenderIn.h, *textureHeight)};
+    SDL_Rect destArea = {boxToRenderIn.x, boxToRenderIn.y, *textureWidth, std::min(boxToRenderIn.h, *textureHeight)};
+    SDL_RenderCopy(renderer, texture, &renderArea, &destArea);
     return;
 }
 
-void customsdl::UI::scrollBox::renderButtonScrollBox(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int textureWidth, int textureHeight, SDL_Texture *texture, void (*onClick)(std::string), std::vector<std::string> entries, int fontSize, std::string fontpath){
-    renderTextureScrollBox(renderer, evt, boxToRenderIn, textureWidth, textureHeight, texture);
+void customsdl::UI::scrollBox::renderButtonScrollBox(SDL_Renderer *renderer, SDL_Event &evt, customsdl::UI *uiObj, SDL_Rect boxToRenderIn, std::vector<std::string> entries, int fontSize, std::string fontpath, void (*onClick)(std::string)){
+    static customsdl::UI::text text_(*uiObj);
+    if(prev_in != entries){
+        prev_compact_in = "";
+        prev_in = entries;
+        for(std::string word : entries){
+            for(char symb : word) if(symb != '\n') prev_compact_in += symb;
+            prev_compact_in += '\n';
+        }
+            //Remove the last un-intended new line.
+        prev_compact_in.pop_back();
+    }
+
+    //Variable comment.
+    if(renderButtonText)
+        renderTextureScrollBox(renderer, evt, boxToRenderIn, &text_.last.textDimensions.w, &text_.last.textDimensions.h, text_.getTexture(renderer, prev_compact_in, boxToRenderIn, fontSize, fontpath, false));
 
     SDL_GetMouseState(&x, &y);
     if(onRect(boxToRenderIn, x, y)){
@@ -154,9 +160,21 @@ void customsdl::UI::scrollBox::renderButtonScrollBox(SDL_Renderer *renderer, SDL
         
         //Hover
             //Which button in the list.
-        int n = (boxToRenderIn.y-y+shifty)/fontSize;
-        SDL_Rect hover_area = {boxToRenderIn.x, boxToRenderIn.y + n*fontSize-shifty, boxToRenderIn.w, fontSize}; //todo
-        SDL_RenderFillRect(renderer, &hover_area);
+        int n = (y-boxToRenderIn.y+shifty*ratioy)/(fontSize+1);
+        if(n < entries.size()){
+            int y_hover = std::max(int(boxToRenderIn.y + n*(fontSize+1)-shifty*ratioy), boxToRenderIn.y);
+            int h_hover = fontSize + 1;
+            int offsetTop = int(shifty*ratioy)%(fontSize+1);
+            int offsetBottom = boxToRenderIn.h%(fontSize+1);
+            
+            if(y < boxToRenderIn.y + fontSize + 1 - offsetTop) h_hover -= offsetTop;
+
+            //TODO: This sometimes breaks
+            else if(y >= boxToRenderIn.y + boxToRenderIn.h - offsetBottom + offsetTop) h_hover -= offsetBottom - offsetTop;
+
+            SDL_Rect hover_area = {boxToRenderIn.x, y_hover, boxToRenderIn.w, h_hover};
+            SDL_RenderFillRect(renderer, &hover_area);
+        }
 
         //Click
         if(evt.type == SDL_MOUSEBUTTONDOWN && evt.button.button == SDL_BUTTON_LEFT && n < entries.size())
@@ -166,10 +184,11 @@ void customsdl::UI::scrollBox::renderButtonScrollBox(SDL_Renderer *renderer, SDL
     return;
 }
 
-void customsdl::UI::scrollBox::scrollBoxCore(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int textureWidth, int textureHeight, SDL_Texture *texture){
+void customsdl::UI::scrollBox::scrollBoxCore(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect boxToRenderIn, int *textureWidth, int *textureHeight, SDL_Texture *texture){
     //VERTICAL
-    ratio = textureHeight/boxToRenderIn.h;
-    int bar_height = boxToRenderIn.h*boxToRenderIn.h/textureHeight;
+    ratioy = double(*textureHeight)/boxToRenderIn.h;
+    int bar_height = boxToRenderIn.h/ratioy;
+
     SDL_Rect bar = {boxToRenderIn.x+boxToRenderIn.w, boxToRenderIn.y+shifty, bar_width, bar_height};
 
     if(evt.type == SDL_MOUSEBUTTONDOWN && evt.button.button == SDL_BUTTON_LEFT) if(onRect(bar)){clicked = true; SDL_GetMouseState(NULL, &clickedy);}
@@ -178,10 +197,13 @@ void customsdl::UI::scrollBox::scrollBoxCore(SDL_Renderer *renderer, SDL_Event &
         SDL_GetMouseState(NULL, &y);
         shifty += y-clickedy;
         clickedy = y;
+
+        if(shifty < 0) shifty = 0;
+        else if(shifty+bar_height >= boxToRenderIn.h) shifty = boxToRenderIn.h-bar_height; 
     }
 
     SDL_SetRenderDrawColor(renderer, bar_color.r, bar_color.g, bar_color.b, bar_color.a);
-    if(ratio > 1) SDL_RenderFillRect(renderer, &bar);
+    if(ratioy > 1) SDL_RenderFillRect(renderer, &bar);
 
     //TODO: HORIZONTAL
 
@@ -213,15 +235,17 @@ FT_FaceRec* customsdl::UI::useFont(std::string path, int fontsize){
 void customsdl::UI::button::renderButton(SDL_Renderer *renderer, SDL_Event &evt, SDL_Rect rect, void (*onClick)(void*), void* data, SDL_Texture *texture){
     CoreButton(evt, rect, onClick, data);
 
-    SDL_RenderCopy(renderer, texture, NULL, &rect);
+    if(texture != nullptr) SDL_RenderCopy(renderer, texture, NULL, &rect);
 
-    SDL_SetRenderDrawColor(renderer, outline_color.r, outline_color.g, outline_color.b, outline_color.a);
     if(onRect(rect)){
-        if(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK) SDL_SetRenderDrawColor(renderer, hovered_color.r, hovered_color.g, hovered_color.b, hovered_color.a-hovered_color.a/3);
+        if(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK) SDL_SetRenderDrawColor(renderer, hovered_color.r, hovered_color.g, hovered_color.b, hovered_color.a-hovered_color.a*3/2);
         else SDL_SetRenderDrawColor(renderer, hovered_color.r, hovered_color.g, hovered_color.b, hovered_color.a);
 
         SDL_RenderFillRect(renderer, &rect);
     }
+
+    SDL_SetRenderDrawColor(renderer, outline_color.r, outline_color.g, outline_color.b, outline_color.a);
+    SDL_RenderDrawRect(renderer, &rect);
 }
 
 void customsdl::UI::button::CoreButton(SDL_Event &evt, SDL_Rect rect, void (*onClick)(void*), void* data){
