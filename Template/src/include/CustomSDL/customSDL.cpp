@@ -307,3 +307,5 @@ void customsdl::surfaceManipulation::drawToSurface(pixel coords, color RGBA){
     data = (Uint8*)active_surface->pixels + coords.y*active_surface->pitch + coords.x * active_surface->format->BytesPerPixel;
     *((Uint32*)data) = (Uint32)(RGBA.r << 0 | RGBA.g << 8 | RGBA.b << 16 | RGBA.a << 24);
 }
+//https://www.codeproject.com/Articles/2604/Browse-Folder-dialog-search-folder-and-all-sub-fol
+//https://learn.microsoft.com/en-us/cpp/build/walkthrough-creating-and-using-a-dynamic-link-library-cpp?view=msvc-170
