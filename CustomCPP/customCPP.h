@@ -13,7 +13,9 @@
 #include<algorithm>
 
 //Windows libraries
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #include<Windows.h>
 #include<memoryapi.h>
 
