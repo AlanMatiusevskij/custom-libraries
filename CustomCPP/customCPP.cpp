@@ -119,3 +119,41 @@ char* customcpp::append_char_p(const char* array, const char* to_add){
 
     return _return;        
 }
+
+//Used by `browseFolder` function.
+static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM LParam, LPARAM lpData){
+    if(uMsg == BFFM_INITIALIZED){
+        std::string tmp = (const char*)lpData;
+        SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
+    }
+    return 0;
+}
+
+std::string customcpp::browseFolder(std::string saved_path){
+    TCHAR path[MAX_PATH];
+    const char *path_param = saved_path.c_str();
+
+    BROWSEINFO bi = {0};
+    bi.lpszTitle = (L"Files will be saved in a selected folder.");
+    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    bi.lpfn = BrowseCallbackProc;
+    bi.lParam = (LPARAM)path_param;
+
+    LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
+
+    if(pidl != 0){
+        SHGetPathFromIDList(pidl, path);
+
+        IMalloc * imalloc = 0;
+        if(SUCCEEDED(SHGetMalloc(&imalloc))){
+            imalloc->Free(pidl);
+            imalloc->Release();
+        }
+        std::wstring wStr = path;
+        std::string str = std::string(wStr.begin(), wStr.end());
+        return str;
+    }
+    
+    //Window closed without selecting.
+    return "";
+}

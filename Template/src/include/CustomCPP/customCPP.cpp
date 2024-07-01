@@ -22,7 +22,6 @@ int customcpp::upsAverage(bool _cout){
 }
 
 /////////////////////
-//Number to string (and vice-versa) conversion functions:
 
 std::string customcpp::intToString(int numb){
     std::string _return_backwards = "";
@@ -98,4 +97,63 @@ double stringToDouble(std::string in){
     return _return;
 }
 
-///////////////////
+wchar_t* customcpp::charToLPWSTR(const char* charArr){
+    int length = MultiByteToWideChar(CP_UTF8, 0, charArr, -1, nullptr, 0);
+    wchar_t* wideChar = new wchar_t[length];
+
+    MultiByteToWideChar(CP_UTF8, 0, charArr, -1, wideChar, length);
+
+    return wideChar;
+}
+
+////////////////////
+
+char* customcpp::append_char_p(const char* array, const char* to_add){
+    size_t length = strlen(array) + strlen(to_add);
+    char* _return = new char[length + 1];
+
+    strcpy(_return, array);
+    for(int i = 0; i < strlen(to_add); i++)
+        _return[i + strlen(array)] = to_add[i];
+    _return[length] = '\0';
+
+    return _return;        
+}
+
+//Used by `browseFolder` function.
+static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM LParam, LPARAM lpData){
+    if(uMsg == BFFM_INITIALIZED){
+        std::string tmp = (const char*)lpData;
+        SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
+    }
+    return 0;
+}
+
+std::string customcpp::browseFolder(std::string saved_path){
+    TCHAR path[MAX_PATH];
+    const char *path_param = saved_path.c_str();
+
+    BROWSEINFO bi = {0};
+    bi.lpszTitle = (L"Files will be saved in a selected folder.");
+    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    bi.lpfn = BrowseCallbackProc;
+    bi.lParam = (LPARAM)path_param;
+
+    LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
+
+    if(pidl != 0){
+        SHGetPathFromIDList(pidl, path);
+
+        IMalloc * imalloc = 0;
+        if(SUCCEEDED(SHGetMalloc(&imalloc))){
+            imalloc->Free(pidl);
+            imalloc->Release();
+        }
+        std::wstring wStr = path;
+        std::string str = std::string(wStr.begin(), wStr.end());
+        return str;
+    }
+    
+    //Window closed without selecting.
+    return "";
+}

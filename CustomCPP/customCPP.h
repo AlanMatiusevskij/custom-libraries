@@ -12,12 +12,14 @@
 #include<filesystem>
 #include<algorithm>
 
-//Windows libraries
+//OS specific libraries
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #include<Windows.h>
 #include<memoryapi.h>
+#include<shlobj.h>
+#include<sstream>
 
 ///////////////////
 
@@ -77,6 +79,16 @@ namespace customcpp{
      * @return Returns a new char* with the appended characters.
     */
     char* append_char_p(const char* array, const char* to_add);
+
+///////////////////////////////////////////////////////////////
+    //Windows specific
+
+    /**
+     * Creates a window to select or create a folder.
+     * @param saved_path path to a folder which will be revealed on start.
+     * @return Returns a path to a selected folder. If value is `""`, that means user closed the window without selecting a folder.
+     */
+    std::string browseFolder(std::string saved_path);
 
 }
 
