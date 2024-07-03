@@ -6,19 +6,20 @@ These are for my personal use, but feel free to try them out as well.
 #### Short descriptions.
 > Do note the parent-child relations of libraries. For example, `CustomSDL` requires `CustomCPP` and `freetype`.
 - CustomSDL ` - has QoL functions and structs, UI class, surfaceManipulation class for batch SDL_Surface pixel manipulation.
-   - CustomCPP - has QoL functions.
+   - CustomCPP - has QoL functions, structs, windows-os related functions and more.
    -  [Freetype](https://freetype.org/).
 - PyCLink - has functions to send data from a c++ application to python and vice-versa.
 
 #### In detail.
 - CustomSDL has:
-   - a `UI` class. It uses [freetype](https://freetype.org/) library to display a text field, which is a tid-bit convenient as it is pretty efficient, doesn't require a 60mb .dll file (mhm, sdl_ttf) and can also return a pointer to the text's SDL_Texture and SDL_Surface (and provide additional info). The class also has a `button` class and a `scrollBox` class, which lets you display a texture or a list of buttons and, if contents are outside the designated rect's (box's, field's) area, allows to scroll vertically and horizontally to show all contents.
+   - a `UI` class. It uses [freetype](https://freetype.org/) library to display a text field, which is a tid-bit convenient as it is pretty efficient, doesn't require a 60mb .dll file (mhm, sdl_ttf) and can also return a pointer to the text's SDL_Texture and SDL_Surface (and provide additional info). The class also has a `button` class and a `scrollBox` class, which lets you display a texture or a list of buttons and, if contents are outside the designated rect's (box's, field's) area, allows to scroll vertically and horizontally to show all contents. Multiple flags for more customizability.
    - a `surfaceManipulation` class. It is useful if you want to draw to a surface multiple times, as the class creates a surface with specified parameters and you can easily call a function to draw to a specific pixel.
    - Outside-class functions:
       - `onRect` function to check if cursor or given x,y coordinates are within an `SDL_Rect`'s area.
       - `compareRects`, self explanatory, returns `true` if two `SDL_Rect`s are equal and `false` if not.
       - `getSurfaceColors` returns RGBA colors of a given `SDL_Surface`'s specificied pixel.
       - `blitSurface` more or less user-friendly explanation on what arguments to provide to an `SDL_BlitSurface` function to merge 2 `SDL_Surface`s.
+      - `getWindowHandle` function to get HWND to SDL created window.
 - CustomCPP has:
    - a `upsAverage` function, which returns the number of updates in the last second.
    - A few conversion fuctions:
@@ -29,6 +30,12 @@ These are for my personal use, but feel free to try them out as well.
       5) `charToLPWSTR`
    - Miscellaneous
       1) `append_char_p` - Append a character array (char*) to a given character array (char*).
+   - Windows specific functions:
+      1) `browseFolder` function opens a `Browse for folder` window to select a path to a folder on the system.
+      2) `getScreenPixels` function returns a pointer array to `color` struct of the specified area's on the screen pixel color values.
+      3) `windowIgnoreColor` function makes a window completely ignore a specified color, effectively making that area transparent.
+   - Algorithms
+      1) `Mergesort`.
 - PyCLink:
    - It is not finished. `direct_cpp-py_link` is currently the latest version and can only exchange `char*` type info. 
    
@@ -37,3 +44,17 @@ These are for my personal use, but feel free to try them out as well.
 > Links to useful libraries I use. 
 - [freetype](https://freetype.org/)
 - [SDL](https://www.libsdl.org/)
+
+#### To-Do
+- [ ] A faster way to apply colors to text.
+- [ ] Smoother `AUTONEWLINES` flag.
+- [ ] Slider object.
+- [ ] Text input box object.
+- [ ] A flag for holding a button.
+- [ ] Multi-window UI rendering.
+- [ ] UI support for dynamic spacing while resizing a window.
+- [ ] Dynamic variables for functions.
+- [ ] Fix merge sort sorted order.
+- [ ] Horizontal scrolling for scroll box.
+- [ ] A flag for scroll box to disable scrolling and keep the bar on one side of the slider.
+- [ ] Fix hovered-button effect for the button in `buttonScrollBox`.

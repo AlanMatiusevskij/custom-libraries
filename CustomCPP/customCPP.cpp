@@ -71,7 +71,7 @@ std::string customcpp::doubleToString(double in, int precision){
 
     return _return;
 }
-double stringToDouble(std::string in){
+double customcpp::stringToDouble(std::string in){
     double _return = 0;
     if(in.size() == 0) return 1;
 
@@ -129,14 +129,22 @@ static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM LParam, LPAR
     return 0;
 }
 
-std::string customcpp::browseFolder(std::string saved_path){
+/////////////
+
+std::string customcpp::browseFolder(std::string saved_path, std::string title){
     TCHAR path[MAX_PATH];
-    const char *path_param = saved_path.c_str();
 
     BROWSEINFO bi = {0};
-    bi.lpszTitle = (L"Files will be saved in a selected folder.");
+
+    WCHAR wchr[title.size()];
+    MultiByteToWideChar(0, 0, title.c_str(), -1, wchr, title.size()+1);
+    bi.lpszTitle = wchr;
+    
     bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
     bi.lpfn = BrowseCallbackProc;
+
+    std::wstring wsaved_path(saved_path.begin(),saved_path.end());
+    const wchar_t * path_param = wsaved_path.c_str();
     bi.lParam = (LPARAM)path_param;
 
     LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
@@ -150,10 +158,114 @@ std::string customcpp::browseFolder(std::string saved_path){
             imalloc->Release();
         }
         std::wstring wStr = path;
-        std::string str = std::string(wStr.begin(), wStr.end());
+        std::string str(wStr.begin(), wStr.end());
         return str;
     }
     
-    //Window closed without selecting.
-    return "";
+    //Window closed without confirming a selection.
+    return saved_path;
+}
+
+customcpp::color* customcpp::getScreenPixels(HWND *hWnd, int wind_Width, int wind_Height){
+    HDC hdc, hdcMemory;
+    DWORD purposeIsToRemoveWarning;
+    BITMAPINFO bitmap;
+
+    //An array containing all pixel rgb values
+    //But micorosft is a place with a bunch of weirdos. The origin is on the bottom left corner 
+    //instead of the top left and color values are saved in ABGR order instead of RGBA. ..honestly, why?
+    BYTE *data;
+
+    hdc = GetDC(HWND_DESKTOP);
+    hdcMemory = CreateCompatibleDC(hdc);
+
+    bitmap.bmiHeader.biSize = sizeof(bitmap.bmiHeader);
+    bitmap.bmiHeader.biWidth = wind_Width;
+    bitmap.bmiHeader.biHeight = wind_Height;
+    bitmap.bmiHeader.biPlanes = 1;
+    bitmap.bmiHeader.biBitCount = 32;
+    bitmap.bmiHeader.biCompression = BI_RGB;
+    bitmap.bmiHeader.biSizeImage = wind_Width * 4 * wind_Height;
+    bitmap.bmiHeader.biClrUsed = 0;
+    bitmap.bmiHeader.biClrImportant = 0;
+    HBITMAP hbitmap = CreateDIBSection(hdcMemory, &bitmap, DIB_RGB_COLORS, (void**)(&data), NULL, purposeIsToRemoveWarning);
+    SelectObject(hdcMemory, hbitmap);
+    BitBlt(hdcMemory, 0, 0, wind_Width, wind_Height, hdc, 0, 0, SRCCOPY);
+
+    color *pixels = new color[wind_Width * wind_Height];
+
+    //Save pixel RGB values in a more sensible format.
+    for(int x = 0; x < wind_Width; x++){
+        for(int y = 0; y < wind_Height; y++){
+            pixels[(wind_Height-y-1)*wind_Width+x] = {(uint8_t)data[4*(y*wind_Width+x)+2], (uint8_t)data[4*(y*wind_Width+x)+1], (uint8_t)data[4*(y*wind_Width+x)], 255};
+        }
+    }
+
+    DeleteObject(hbitmap);
+    DeleteDC(hdcMemory);
+    ReleaseDC(*hWnd, hdc);
+
+    return pixels;
+}
+
+bool customcpp::windowIgnoreColor(HWND *windowHandle, color ingored_rgb){
+    COLORREF clr = RGB(ingored_rgb.r, ingored_rgb.g, ingored_rgb.b);
+    SetWindowLong(*windowHandle, GWL_EXSTYLE, GetWindowLong(*windowHandle, GWL_EXSTYLE) | WS_EX_LAYERED);
+    return SetLayeredWindowAttributes(*windowHandle, clr, 0, LWA_COLORKEY);
+}
+
+std::vector<int> customcpp::mergesort(std::vector<int> arr){
+    if(arr.size() == 1) return arr;
+
+    std::vector<int> _1 = mergesort({arr.begin(), arr.begin() + arr.size()/2});
+    std::vector<int> _2 = mergesort({arr.begin() + arr.size()/2, arr.end()});
+
+    std::vector<int> _rtrn;
+    int i = 0, x = 0;
+    while(i < _1.size() || x < _2.size()){
+        if(_1[i] < _2[x] && i < _1.size() || x >= _2.size()){
+            _rtrn.push_back(_1[i]);
+            i++;
+        }
+        else{
+            _rtrn.push_back(_2[x]);
+            x++; 
+        }
+    }
+
+    return _rtrn;
+}
+
+std::vector<std::pair<int, float>> customcpp::mergesort(std::vector<std::pair<int, float>> arr, bool sort_the_first){
+    if(arr.size() == 1) return arr;
+
+    std::vector<std::pair<int, float>> _1 = mergesort({arr.begin(), arr.begin() + arr.size()/2}, sort_the_first);
+    std::vector<std::pair<int, float>> _2 = mergesort({arr.begin() + arr.size()/2, arr.end()}, sort_the_first);
+
+    std::vector<std::pair<int, float>> _rtrn;
+    int i = 0, x = 0;
+    while(i < _1.size() || x < _2.size()){
+        if(sort_the_first){
+            if(_1[i].first < _2[x].first && i < _1.size() || x >= _2.size()){
+                _rtrn.push_back(_1[i]);
+                i++;
+            }
+            else{
+                _rtrn.push_back(_2[x]);
+                x++; 
+            }
+        }
+        else{
+            if(_1[i].second < _2[x].second && i < _1.size() || x >= _2.size()){
+                _rtrn.push_back(_1[i]);
+                i++;
+            }
+            else{
+                _rtrn.push_back(_2[x]);
+                x++; 
+            }
+        }
+    }
+
+    return _rtrn;
 }
