@@ -165,7 +165,7 @@ std::string customcpp::browseFolder(std::string saved_path, std::string title){
     //Window closed without confirming a selection.
     return saved_path;
 }
-//TODO: select an area. 
+
 customcpp::color* customcpp::getScreenPixels(HWND *hWnd, int wind_Width, int wind_Height){
     HDC hdc, hdcMemory;
     DWORD purposeIsToRemoveWarning;

@@ -97,6 +97,10 @@ SDL_Surface *customsdl::UI::text::getSurface(std::string text, color rgba, SDL_R
     }
     
     //Store values
+<<<<<<< HEAD
+    last.rgba = rgba;
+=======
+>>>>>>> 0fbcb2940a928272c87e0fb5c8721a604e2f196c
     last.surface = manip.active_surface;
     last.fontData = *fontData;
     last.text = text;
@@ -150,12 +154,20 @@ void customsdl::UI::text::renderText(std::string text, color rgba, SDL_Rect text
 }
 
 void customsdl::UI::scrollBox::renderTextureScrollBox(SDL_Rect boxToRenderIn, int *textureWidth, int *textureHeight, SDL_Texture *texture, Uint32 flags){
+<<<<<<< HEAD
+    if(flags & XCENTERED) boxToRenderIn.x = ui->vars.WIDTH/2 - (*textureWidth)/2;
+    if(flags & YCENTERED) boxToRenderIn.y = ui->vars.HEIGHT/2 - (*textureHeight)/2;
+=======
     scrollBoxCore(boxToRenderIn, textureWidth, textureHeight, texture, flags);
+>>>>>>> 0fbcb2940a928272c87e0fb5c8721a604e2f196c
 
     if(!(flags & NOOUTLINE)){
         SDL_SetRenderDrawColor(vars.renderer, vars.outline_color->r, vars.outline_color->g, vars.outline_color->b, vars.outline_color->a);
         SDL_RenderDrawRect(vars.renderer, &boxToRenderIn);
     }
+
+    scrollBoxCore(boxToRenderIn, textureWidth, textureHeight, texture, flags);
+
 
     SDL_Rect renderArea = {int(shiftx*ratiox), int(shifty*ratioy), *textureWidth, std::min(boxToRenderIn.h, *textureHeight)};
     SDL_Rect destArea = {boxToRenderIn.x, boxToRenderIn.y, *textureWidth, std::min(boxToRenderIn.h, *textureHeight)};

@@ -183,7 +183,11 @@ namespace customsdl{
 
         // / / / / / / / / **
 
+<<<<<<< HEAD
+        static UI* INITIALIZE(){
+=======
         static UI* getObject(){
+>>>>>>> 0fbcb2940a928272c87e0fb5c8721a604e2f196c
             if(ui == nullptr) ui = new UI();
             return ui;
         }
@@ -204,7 +208,11 @@ namespace customsdl{
             //Note ui's vars.
             UI::vars_struct vars;
 
+<<<<<<< HEAD
+            button() : ui(UI::INITIALIZE()){
+=======
             button() : ui(UI::getObject()){
+>>>>>>> 0fbcb2940a928272c87e0fb5c8721a604e2f196c
                 vars = ui->vars;
             }
 
@@ -240,7 +248,11 @@ namespace customsdl{
             //Note ui's vars.
             UI::vars_struct vars;
 
+<<<<<<< HEAD
+            text() : ui(UI::INITIALIZE()){
+=======
             text() : ui(UI::getObject()){
+>>>>>>> 0fbcb2940a928272c87e0fb5c8721a604e2f196c
                 vars = ui->vars;
             }
             ~text(){
@@ -278,7 +290,11 @@ namespace customsdl{
             //Note ui's vars.
             UI::vars_struct vars;
 
+<<<<<<< HEAD
+            scrollBox() : ui(UI::INITIALIZE()){
+=======
             scrollBox() : ui(UI::getObject()){
+>>>>>>> 0fbcb2940a928272c87e0fb5c8721a604e2f196c
                 vars = ui->vars;
             }
 
@@ -326,7 +342,11 @@ namespace customsdl{
             //Note ui's vars.
             UI::vars_struct vars;
 
+<<<<<<< HEAD
+            slider() : ui(UI::INITIALIZE()){
+=======
             slider() : ui(UI::getObject()){
+>>>>>>> 0fbcb2940a928272c87e0fb5c8721a604e2f196c
                 vars = ui->vars;
             }
         

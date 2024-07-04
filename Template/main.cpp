@@ -9,11 +9,10 @@
 
 const int WIDTH = 800, HEIGHT = 600;
 const int UPS = 240;
-customsdl::UI obj;
-std::string path = "./assets/fonts/Raleway-SemiBold.ttf";
+customsdl::UI *ui = customsdl::UI::INITIALIZE();
+customsdl::UI::font font_Data = {20, "./assets/fonts/Raleway-SemiBold.ttf"};
 
-void testClick(std::string data);
-void testButton(void* data);
+void quitButton(void* data);
 
 int main(int argc, char *argv[]){
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -22,25 +21,36 @@ int main(int argc, char *argv[]){
     SDL_SetRenderDrawBlendMode(rend, SDL_BlendMode::SDL_BLENDMODE_BLEND);
     SDL_Event evt;
 
-    customsdl::UI::text phrase1(obj);
-    customsdl::UI::text phrase2(obj);
-    customsdl::UI::scrollBox scroll1;
-    customsdl::UI::scrollBox scroll2;
-    customsdl::UI::button button1;
+    //Important
+    ui->SETUP(rend, &evt, WIDTH, HEIGHT, {255,255,255,255}, {255,255,255,100}, {255,255,255,50});
+
+    bool do_quit = false;
+
+    //UI Objects
+    customsdl::UI::text _1_text;
+    customsdl::UI::text _2_text;
+    customsdl::UI::text _3_text;
+    customsdl::UI::button _1_button;
+    customsdl::UI::scrollBox _1_textScrollBox;
+
+    //Boxes
+    SDL_Rect _1_text_box = {WIDTH/2-50, 20, 100, 100};
+    SDL_Rect _1_button_box = {0, 50, 60, font_Data.fontSize + 10};
+    SDL_Rect _2_text_box = {WIDTH/2-50, 54, 100, 100};
+    SDL_Rect _3_scrolbox_box = {0, 100, 100, 100};
 
     while(true){
         SDL_SetRenderDrawColor(rend, 30, 30, 30, 255);
         SDL_RenderClear(rend);
         SDL_SetRenderDrawColor(rend, 255, 255, 255, 255);
+        SDL_PollEvent(&evt);
 
-        if(SDL_PollEvent(&evt)){
-            if(SDL_QUIT == evt.type || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q)) break;
-        }
+        _1_text.renderText("Hello world.", {0,255,100, 255}, _1_text_box, &font_Data, customsdl::UI::UIFLAGS::XCENTERED);
+        _2_text.renderText("Quit", {240, 240, 240, 255}, _2_text_box, &font_Data, ui->XCENTERED);
+        _1_button.renderButton(_1_button_box, &quitButton, (void*)(&do_quit), customsdl::UI::UIFLAGS::XCENTERED);
+        _1_textScrollBox.renderTextureScrollBox(_3_scrolbox_box, &_3_text.last.surface->w, &_3_text.last.surface->h, _3_text.getTexture("I'm\nnever\ngoing\nto\ngive\nyou\nup\nNever\ngoing\nto\nlet\nyou\ndown\nNever\ngonna\nrun\naround\nand\ndesert\nyou", {255,255,255,255}, _3_scrolbox_box, &font_Data, ui->XCENTERED), ui->XCENTERED);
 
-        phrase1.renderText(rend, "COOL?", {100,100,200,200}, 15, path, false, false);
-        scroll1.renderTextureScrollBox(rend, evt, {400,0,300,200}, &phrase2.last.textDimensions.w, &phrase2.last.textDimensions.h, phrase2.getTexture(rend, "adnwi\ndaw\nadwa\nadwddddddddddddd dddddddddddddddd dddddddd dddd d ddd ddd dddddddaw\nadawa\nwda\nadwdadwada\nadwada\n\n\ndahndawh\nadwjahd", {400,0,300,200}, 20, path, true));
-        scroll2.renderButtonScrollBox(rend, evt, &obj, {200,200, 400, 200}, {" i", "know", "1", "have", "good", "judgement", " , 2", "know", "yep", "you", "will", "never", "know", "me", "nor", "the", "star", "inside", "me"}, 20, path, &testClick);
-        button1.renderButton(rend, evt, {0, 400, 50, 50}, &testButton, (void*)(&WIDTH), nullptr);
+        if(SDL_QUIT == evt.type || (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_q) || do_quit) break;
 
         customcpp::upsAverage(true);
 
@@ -51,11 +61,8 @@ int main(int argc, char *argv[]){
     return EXIT_SUCCESS;
 }
 
-void testClick(std::string data){
-    std::cout << data << "\n";
-}
-
-void testButton(void* data){
-    int value = *(int*)data;
-    std::cout << value << "\n";
+void quitButton(void* data){
+    bool *boolean = (bool*)data;
+    *boolean = true;
+    std::cout << "Quitting!";
 }
