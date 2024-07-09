@@ -7,14 +7,6 @@ customsdl::UI *customsdl::UI::ui = nullptr;
 
 ///////////////////////////////////////////
 
-void customsdl::UI::SETUP(SDL_Renderer *renderer, SDL_Event *event, int width, int height, color outline_color, color hovered_color, color bar_color){
-    static color outline_clr_p = outline_color;
-    static color hovered_clr_p = hovered_color;
-    static color bar_clr_p = bar_color;
-
-    ui->vars = {&outline_clr_p, &hovered_clr_p, &bar_clr_p, width, height, renderer, event};
-}
-
 SDL_Surface *customsdl::UI::text::getSurface(std::string text, color rgba, SDL_Rect textBox, font *fontData, Uint32 flags){
     if(last.text == text && compareRects(textBox, last.TextBox) && last.fontData.fontPath == fontData->fontPath && last.fontData.fontSize == fontData->fontSize && last.rgba.r == rgba.r && last.rgba.g == rgba.g && last.rgba.b == rgba.b && last.rgba.a == rgba.a && last.surface != nullptr)
         return last.surface;
@@ -54,7 +46,7 @@ SDL_Surface *customsdl::UI::text::getSurface(std::string text, color rgba, SDL_R
             FT_Load_Char(FACE, symb, FT_LOAD_BITMAP_METRICS_ONLY);
             cWidth+=FACE->glyph->bitmap.width;
             wordWidth+=FACE->glyph->bitmap.width;
-            if(((flags & AUTONEWLINES) && cWidth >= textBox.w) || symb == '\n'){
+            if(((flags & AUTO_NEW_LINES) && cWidth >= textBox.w) || symb == '\n'){
                 cHeight += fontData->fontSize+1;
                 cWidth = wordWidth+1;
             }
@@ -77,7 +69,7 @@ SDL_Surface *customsdl::UI::text::getSurface(std::string text, color rgba, SDL_R
     int belowBaseLine{};
 
     for(int i = 0; i < words.size(); i++){
-        if(((flags & AUTONEWLINES) && i != 0 && cWidth+wordLength[i] >= textBox.w) || (words[i][0] == '\n' && i!=0)){
+        if(((flags & AUTO_NEW_LINES) && i != 0 && cWidth+wordLength[i] >= textBox.w) || (words[i][0] == '\n' && i!=0)){
             cHeight+=fontData->fontSize+1;
             cWidth = 1;
         }
@@ -108,10 +100,8 @@ SDL_Surface *customsdl::UI::text::getSurface(std::string text, color rgba, SDL_R
     for(int x = 0; x < maxWidth; x++){
         for(int y = 0; y < maxHeight; y++){
             color src = getSurfaceColors({x, y}, manip.active_surface, false);
-                //Roughing up the edges, because anti aliasing makes them look terrible. More or less works, for now.
-            int buffed = src.a; buffed *=2; if(buffed > 255) buffed = 255;
-            buffed = buffed*(float)rgba.a/255;
-            manip.drawToSurface({x, y}, {(Uint8)(int(src.r*(float)rgba.r/255) << 0), (Uint8)(int(src.g*(float)rgba.g/255) << 0), (Uint8)(int(src.b*(float)rgba.b/255) << 0), (Uint8)(buffed << 0)});
+            src.r = src.g = src.b = 255;
+            manip.drawToSurface({x, y}, {(Uint8)(int(src.r*(float)rgba.r/255) << 0), (Uint8)(int(src.g*(float)rgba.g/255) << 0), (Uint8)(int(src.b*(float)rgba.b/255) << 0), (Uint8)(int(src.a*(float)rgba.a/255) << 0)});
         }
     }
 
@@ -154,22 +144,23 @@ void customsdl::UI::scrollBox::renderTextureScrollBox(SDL_Rect boxToRenderIn, in
     if(flags & XCENTERED) boxToRenderIn.x = ui->vars.WIDTH/2 - (*textureWidth)/2;
     if(flags & YCENTERED) boxToRenderIn.y = ui->vars.HEIGHT/2 - (*textureHeight)/2;
 
-    if(!(flags & NOOUTLINE)){
-        SDL_SetRenderDrawColor(vars.renderer, vars.outline_color->r, vars.outline_color->g, vars.outline_color->b, vars.outline_color->a);
+    if(!(flags & NO_VISUALS)){
+        background->renderPane(boxToRenderIn, vars.background_color, 0);
+        SDL_SetRenderDrawColor(vars.renderer, vars.outline_color.r, vars.outline_color.g, vars.outline_color.b, vars.outline_color.a);
         SDL_RenderDrawRect(vars.renderer, &boxToRenderIn);
     }
 
     scrollBoxCore(boxToRenderIn, textureWidth, textureHeight, texture, flags);
 
-
-    SDL_Rect renderArea = {int(shiftx*ratiox), int(shifty*ratioy), *textureWidth, std::min(boxToRenderIn.h, *textureHeight)};
-    SDL_Rect destArea = {boxToRenderIn.x, boxToRenderIn.y, *textureWidth, std::min(boxToRenderIn.h, *textureHeight)};
-    SDL_RenderCopy(vars.renderer, texture, &renderArea, &destArea);
+    if(!(flags & UI::UIFLAGS::NO_BUTTON_TEXT)){
+        SDL_Rect renderArea = {int(shiftx*ratiox), int(shifty*ratioy), std::min(boxToRenderIn.w, *textureWidth), std::min(boxToRenderIn.h, *textureHeight)};
+        SDL_Rect destArea = {boxToRenderIn.x, boxToRenderIn.y, std::min(boxToRenderIn.w, *textureWidth), std::min(boxToRenderIn.h, *textureHeight)};
+        SDL_RenderCopy(vars.renderer, texture, &renderArea, &destArea);
+    }
     return;
 }
 
 void customsdl::UI::scrollBox::renderButtonScrollBox(SDL_Rect boxToRenderIn, std::vector<std::string> entries, color rgba, font *fontData, void (*onClick)(std::string), Uint32 flags){
-    static customsdl::UI::text text_;
     if(prev_in != entries){
         prev_compact_in = "";
         prev_in = entries;
@@ -181,17 +172,15 @@ void customsdl::UI::scrollBox::renderButtonScrollBox(SDL_Rect boxToRenderIn, std
         prev_compact_in.pop_back();
     }
 
-    //Variable comment.
-    if(!(flags & NOBUTTONTEXT))
-        renderTextureScrollBox(boxToRenderIn, &text_.last.textDimensions.w, &text_.last.textDimensions.h, text_.getTexture(prev_compact_in, rgba, boxToRenderIn, fontData, 0), flags);
+    renderTextureScrollBox(boxToRenderIn, &text_->last.textDimensions.w, &text_->last.textDimensions.h, text_->getTexture(prev_compact_in, rgba, boxToRenderIn, fontData, 0), flags);
 
     SDL_GetMouseState(&x, &y);
     if(onRect(boxToRenderIn, x, y)){        
         //Hover
             //Which button in the list.
         int n = (y-boxToRenderIn.y+shifty*ratioy)/(fontData->fontSize+1);
-        if(n < entries.size() && !(flags & NOHOVER)){
-            SDL_SetRenderDrawColor(vars.renderer, vars.hovered_color->r, vars.hovered_color->g, vars.hovered_color->b, vars.hovered_color->a);
+        if(n < entries.size() && !(flags & NO_BUTTON_EFFECT)){
+            SDL_SetRenderDrawColor(vars.renderer, vars.hovered_color.r, vars.hovered_color.g, vars.hovered_color.b, vars.hovered_color.a);
 
             int y_hover = std::max(int(boxToRenderIn.y + n*(fontData->fontSize+1)-shifty*ratioy), boxToRenderIn.y);
             int h_hover = fontData->fontSize + 1;
@@ -222,24 +211,62 @@ void customsdl::UI::scrollBox::scrollBoxCore(SDL_Rect boxToRenderIn, int *textur
 
     y_bar = {boxToRenderIn.x+boxToRenderIn.w, boxToRenderIn.y+shifty, 8, bar_height};
 
-    if(vars.event->type == SDL_MOUSEBUTTONDOWN && vars.event->button.button == SDL_BUTTON_LEFT) if(onRect(y_bar)){clicked = true; SDL_GetMouseState(NULL, &clickedy);}
-    if(vars.event->type == SDL_MOUSEBUTTONUP && vars.event->button.button == SDL_BUTTON_LEFT) clicked = false;
-    if(clicked){
+    if(vars.event->type == SDL_MOUSEBUTTONDOWN && vars.event->button.button == SDL_BUTTON_LEFT) if(onRect(y_bar) && !(flags & UIFLAGS::LOCK_VERTICAL_SCROLLBAR)){state_clickedY = true; SDL_GetMouseState(NULL, &clickedy);}
+    if(vars.event->type == SDL_MOUSEBUTTONUP && vars.event->button.button == SDL_BUTTON_LEFT) state_clickedY = false;
+    if(state_clickedY){
         SDL_GetMouseState(NULL, &y);
         shifty += y-clickedy;
         clickedy = y;
 
+        stickY = false;
         if(shifty < 0) shifty = 0;
-        else if(shifty+bar_height >= boxToRenderIn.h) shifty = boxToRenderIn.h-bar_height; 
+        else if(shifty+bar_height >= boxToRenderIn.h){
+            shifty = boxToRenderIn.h-bar_height-1; 
+            //Scroll bar is "sticked" to the bottom of the rect.
+            stickY = true;
+        }
     }
 
-    if(!(flags & UIFLAGS::NOVERTICALSCROLLBAR)){
-        SDL_SetRenderDrawColor(vars.renderer, vars.bar_color->r, vars.bar_color->g, vars.bar_color->b, vars.bar_color->a);
+    if(stickY)
+        if(flags & UIFLAGS::VERTICAL_SCROLLBAR_STICK)
+            shifty = boxToRenderIn.h-bar_height-1;
+
+    if(!(flags & UIFLAGS::NO_VERTICAL_SCROLLBAR)){
+        SDL_SetRenderDrawColor(vars.renderer, vars.bar_color.r, vars.bar_color.g, vars.bar_color.b, vars.bar_color.a);
         if(ratioy > 1) SDL_RenderFillRect(vars.renderer, &y_bar);
     }
 
-    //TODO: HORIZONTAL
+    //Horizontal
 
+    ratiox = double(*textureWidth)/boxToRenderIn.w;
+    int bar_width = boxToRenderIn.w/ratiox;
+
+    x_bar = {boxToRenderIn.x + shiftx, boxToRenderIn.y+boxToRenderIn.h, bar_width, 8};
+
+    if(vars.event->type == SDL_MOUSEBUTTONDOWN && vars.event->button.button == SDL_BUTTON_LEFT) if(onRect(x_bar) && !(flags & UIFLAGS::LOCK_HORIZONTAL_SCROLLBAR)){state_clickedX = true; SDL_GetMouseState(&clickedx, NULL);}
+    if(vars.event->type == SDL_MOUSEBUTTONUP && vars.event->button.button == SDL_BUTTON_LEFT) state_clickedX = false;
+    if(state_clickedX){
+        SDL_GetMouseState(&x, NULL);
+        shiftx += x - clickedx;
+        clickedx = x;
+
+        stickX = false;
+        if(shiftx < 0) shiftx = 0;
+        else if(shiftx + bar_width >= boxToRenderIn.w){
+            shiftx = boxToRenderIn.w-bar_width-1;
+            stickX = true;
+        }
+    }
+
+    if(stickX)
+        if(flags & UIFLAGS::HORIZONTAL_SCROLLBAR_STICK)
+            shiftx = boxToRenderIn.w-bar_width-1;
+
+
+    if(!(flags & UIFLAGS::NO_HORIZONTAL_SCROLLBAR)){
+        if(ratiox > 1) SDL_RenderFillRect(vars.renderer, &x_bar);    
+    }
+    
     return;
 }
 
@@ -265,28 +292,61 @@ FT_FaceRec* customsdl::UI::useFont(std::string path, int fontsize){
     return active_faces[i].face;
 }
 
-void customsdl::UI::button::renderButton(SDL_Rect rect, void (*onClick)(void*), void* data, Uint32 flags){
-    if(flags & XCENTERED) rect.x = vars.WIDTH/2 - rect.w/2; 
-    if(flags & YCENTERED) rect.y = vars.HEIGHT/2 - rect.h/2;
+void customsdl::UI::button::renderButton(SDL_Rect rect, void (*onClick)(void*), void* click_data, void (*onHold)(void*), void* hold_data, Uint32 flags){
+    static int time_held = 0;
+    static std::chrono::steady_clock::time_point then;
+
+    if(flags & UIFLAGS::XCENTERED) rect.x = vars.WIDTH/2 - rect.w/2; 
+    if(flags & UIFLAGS::YCENTERED) rect.y = vars.HEIGHT/2 - rect.h/2;
     
-    if(vars.event->type == SDL_MOUSEBUTTONUP && vars.event->button.button == SDL_BUTTON_LEFT)
-        if(onRect(rect)) onClick(data);
-
-    if(onRect(rect)){
-        if(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK){
-            SDL_SetRenderDrawColor(vars.renderer, vars.hovered_color->r, vars.hovered_color->g, vars.hovered_color->b, vars.hovered_color->a*3/2);
-            SDL_RenderFillRect(vars.renderer, &rect);
-        }
-        else if(!(flags & NOHOVER)){
-            SDL_SetRenderDrawColor(vars.renderer, vars.hovered_color->r, vars.hovered_color->g, vars.hovered_color->b, vars.hovered_color->a);
-            SDL_RenderFillRect(vars.renderer, &rect);
-        }
-    }
-
-    if(!(flags & NOOUTLINE)){
-        SDL_SetRenderDrawColor(vars.renderer, vars.outline_color->r, vars.outline_color->g, vars.outline_color->b, vars.outline_color->a);
+    if(!(flags & UIFLAGS::NO_VISUALS)){
+        background->renderPane(rect, vars.background_color, 0);
+        SDL_SetRenderDrawColor(vars.renderer, vars.outline_color.r, vars.outline_color.g, vars.outline_color.b, vars.outline_color.a);
         SDL_RenderDrawRect(vars.renderer, &rect);
     }
+
+    if(initialized){
+        initialized = false;
+        ui->layers.push_back({this, rect});
+    }
+
+    if(vars.event->type == SDL_MOUSEBUTTONUP && vars.event->button.button == SDL_BUTTON_LEFT){
+        if((flags & UIFLAGS::BUTTON_CLICK_ON_UP)) if(onRect(rect) && onClick != nullptr) if(ui->checkLayers(this, rect)) onClick(click_data);
+        held = false;
+    }
+    if(vars.event->type == SDL_MOUSEBUTTONDOWN && vars.event->button.button == SDL_BUTTON_LEFT)
+        if(onRect(rect))
+            if(ui->checkLayers(this, rect)){
+                if(onClick != nullptr && !(flags & UIFLAGS::BUTTON_CLICK_ON_UP)) onClick(click_data);
+                held = true;
+                time_held = 0;
+                then = std::chrono::steady_clock::now();
+            }
+
+    if(held) if(onHold != nullptr){
+        if(time_held >= this->vars.button_hold_wait){
+            onHold(hold_data);
+        }
+        else{
+            time_held += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-then).count();
+            then = std::chrono::steady_clock::now();
+        }
+    }
+
+    if(onRect(rect)){
+        if(ui->checkLayers(this, rect)){
+            int alfa = vars.hovered_color.a;
+            if(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK){
+                alfa=alfa*3/2;
+                if(alfa > 255) alfa = 255;
+            }
+            if(!(flags & UIFLAGS::NO_BUTTON_EFFECT)){
+                SDL_SetRenderDrawColor(vars.renderer, vars.hovered_color.r, vars.hovered_color.g, vars.hovered_color.b, alfa);
+                SDL_RenderFillRect(vars.renderer, &rect);
+            }                       
+        }
+    }
+    else if(held) if(!(flags & UIFLAGS::BUTTON_HOLD_NOT_RELATIVE)) held = false;
 }
 
 bool customsdl::onRect(SDL_Rect rect){
@@ -361,4 +421,41 @@ HWND *customsdl::getWindowHandle(SDL_Window *window, int indx){
         handles[indx] = &wmInfo.info.win.window;
     }
     return handles[indx];
+}
+
+bool customsdl::UI::checkLayers(void *obj_pointer, SDL_Rect &obj_area){
+    static int x, y;
+
+    //Update rect.
+    for(UI::layer_Struct &layer : layers)
+        if(layer.pointer == obj_pointer)
+            layer.rect = obj_area;
+
+    SDL_GetMouseState(&x, &y);
+    for(int i = layers.size() - 1; i>=0; i--){
+        if(onRect(layers[i].rect, x, y)){
+            if(compareRects(obj_area, layers[i].rect) && layers[i].pointer == obj_pointer)
+                return true;
+            else
+                return false;
+        }
+    }
+
+    std::cout << "shouldn't reach this point?\n";
+    return true;
+}
+
+void customsdl::UI::pane::renderPane(SDL_Rect rect, color clr, int flags){
+    //Create the 'wall'
+    if(initialized){
+        initialized = false;
+        index = ui->layers.size();
+        ui->layers.push_back({this, rect});
+    }
+
+    if(!(flags & UIFLAGS::NO_VISUALS)){
+        SDL_SetRenderDrawColor(vars.renderer, clr.r, clr.g, clr.b, clr.a);
+        SDL_RenderFillRect(vars.renderer, &rect);
+    }
+
 }

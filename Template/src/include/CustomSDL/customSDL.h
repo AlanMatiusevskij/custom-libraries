@@ -106,10 +106,11 @@ namespace customsdl{
 ////////////////////
 
     /** 
-     * `AFTER CREATING AN OBJECT, IMMEDIATELLY CALL IT'S `SETUP` FUNCTION!`
-     * A class that has all UI object clas\ses.
-     * Can be created as many times as possible, but all pointers will point to a the same ui object, as only one can exist.
-     * Feel free to create this object in multiple functions.
+     * An object should be created once like this: `customsdl::UI *obj = customsdl::UI::INITIALIZE(...);`.
+     * A class that has all UI object classes.
+     * Can be created as many times as possible, but all pointers will point to a the same UI object, as only one can exist.
+     * So feel free to get a pointer to this object in multiple functions.
+     * Do note the comments for `INITIALIZE` function.
      */
     class UI{
     public:
@@ -129,21 +130,21 @@ namespace customsdl{
         enum UIFLAGS{
             /**
              * A `text` object's flag. Set it to automatically shift words to a new line if the word should be too long to fit the given text box.
-             * Will not work if a single word is longer than the width of the textbox. TODO:i suppose a better idea for autonewlines?
+             * Will not work if a single word is longer than the width of the textbox.
              */
-            AUTONEWLINES = 0x00000001,
+            AUTO_NEW_LINES = 0x00000001,
             /* Centers text VERTICALLY within given rect's area. For buttons, screen size values must be provided first to UI::baseValues;
                Used by `text`, `button`. */
             YCENTERED = 0x00000002,
             /* Centers text HORIZONTALLY within given rect's area. For buttons, screen size values must be provided first to UI::baseValues;
                Used by `text`, `button`. */
             XCENTERED = 0x00000004,
-            /* Disables rect's rendered borders. 
-               Used by `button`, `scrollBox`, `buttonScrollBox`. */
-            NOOUTLINE = 0x00000008,
-            /* Disables the applied color effect when hovering over a button.
-               Used by `button`, `buttonScrollBox.` */
-            NOHOVER = 0x00000010,
+            /* Disables background and border outlines for UI objects. (for button hover effect, use `NO_BUTTON_EFFECT`)
+               Used by `button`, `scrollBox`, `buttonScrollBox`, `pane`. */
+            NO_VISUALS = 0x00000008,
+            /* Disables the applied color effect when hovering and pressing a button.
+               Used by `button`, `buttonScrollBox`. */
+            NO_BUTTON_EFFECT = 0x00000010,
             /**
              * Used by `buttonScrollBox`.
              * If this flag is used, the given names of buttons in `entries` parameter of `renderButtonScrollBox(...)` function will not be displayed.
@@ -153,19 +154,45 @@ namespace customsdl{
              * With this flag, the full directories will not be displayed and a user will only see the folder names, while clicking on a button will pass the full directory path to a function.
              * Note that for this case to work font and rect values should be the same for both functions.
              */
-            NOBUTTONTEXT = 0x00000020,
+            NO_BUTTON_TEXT = 0x00000020,
             /* Disables the basic vertical bar rect rendering.
                Used by `scrollBox`, `buttonScrollBox`. */
-            NOVERTICALSCROLLBAR = 0x00000040
+            NO_VERTICAL_SCROLLBAR = 0x00000040,
+            /* Makes it so the vertical scroll bar will "stick" to the bottom when it is close to it and the vertical size of the scroll box is increased.
+               Used by `scrollBox`, `buttonScrollBox`. */
+            VERTICAL_SCROLLBAR_STICK = 0x00000080,
+            /* Disables the basic horizontal bar rect rendering.
+               Used by `scrollBox`, `buttonScrollBox`. */
+            NO_HORIZONTAL_SCROLLBAR = 0x00000100,
+            /* Makes it so the horizontal scroll bar will "stick" to the right side when it is close to it and the horizontal size of the scroll box is increased.
+               Used by `scrollBox`, `buttonScrollBox`. */
+            HORIZONTAL_SCROLLBAR_STICK = 0x00000200,
+            /* Make vertical scroll bar not interactable.
+               Used by `scrollBox`, `buttonScrollBox`. */
+            LOCK_VERTICAL_SCROLLBAR = 0x00000400,
+            /* Make horizontal scroll bar not interactable.
+               Used by `scrollBox`, `buttonScrollBox`. */
+            LOCK_HORIZONTAL_SCROLLBAR = 0x00000800,
+            /* Works only when paired with `UIFLAGS::BUTTON_HOLD`. Makes it so when the cursor leaves button's area, the button is not `unpressed` after being held.
+               Used by `button`, `buttonScrollBox` */
+            BUTTON_HOLD_NOT_RELATIVE = 0x00001000,
+            /* Makes it so the button `onClick` function is called only when button is unpressed on its area. `onHold` function will not be called when this flag is used.
+               Used by `button`, `buttonScrollBox` */
+            BUTTON_CLICK_ON_UP = 0x00002000,
         };
 
         struct vars_struct{
             //Rect's outline color. This value applies to all UI elements when they are created.
-            color *outline_color = new color{255,255,255,255};
+            color outline_color = {255,255,255,255};
             //Filled rect's button-hovered effect color. This value applies to all UI elements when they are created.
-            color *hovered_color = new color{255,255,255,30};
+            color hovered_color = {255,255,255,30};
             //Horizontal and vertical bar's colors. This value applies to all UI scroll box elements when they are created.
-            color *bar_color = new color{255,255,255,100};
+            color bar_color = {255,255,255,100};
+            //The background color behind buttons, scrollboxes and the color of `pane`.
+            color background_color = {0,0,0,255};
+            /* Time to wait for button with `UIFLAGS::BUTTON_HOLD` after pressed to execute secondary function.
+               In milliseconds. */
+            int button_hold_wait = 500;
             //Main screen's
             int WIDTH = 0, HEIGHT = 0;
             SDL_Renderer *renderer;
@@ -183,42 +210,97 @@ namespace customsdl{
 
         // / / / / / / / / **
 
-        static UI* INITIALIZE(){
-            if(ui == nullptr) ui = new UI();
-            return ui;
-        }
-
         /**
-         * Must call this right after creating a UI instance.
+         * Initialize UI class. This function is REQUIRED when creating UI class object for the first time.
+         * For any consecutive times to get a pointer to this object, use `customsdl::UI::GET_UI_POINTER()`.
+         * Calling this (`INITIALIZE()`) function a second time will just overwrite the given parameters in the same way as modifying `customsdl::UI::vars` struct.
+         * @param renderer a pointer to the main window's renderer target.
+         * @param event a pointer to the main SDL event structure.
          * @param width the width of the main window.
          * @param height the height of the main window.
          * @param outline_color default rect's outline color.
          * @param hovered_color filled rect's button-hovered effect color.
          * @param bar_color horizontal and vertical bar's colors.
+         * @param background_color the background color behind some objects.
          */
-        void SETUP(SDL_Renderer *renderer, SDL_Event *event, int width, int height, color outline_color, color hovered_color, color bar_color);
+        static UI* INITIALIZE(SDL_Renderer *renderer, SDL_Event *event, int width, int height, color outline_color, color hovered_color, color bar_color, color background_color){
+            if(ui == nullptr) ui = new UI();
+            ui->vars.bar_color = bar_color;
+            ui->vars.event = event;
+            ui->vars.HEIGHT = height;
+            ui->vars.hovered_color = hovered_color;
+            ui->vars.outline_color = outline_color;
+            ui->vars.renderer = renderer;
+            ui->vars.WIDTH = width;
+            ui->vars.background_color = background_color;
+            return ui;
+        }
+
+        static UI* GET_UI_POINTER(){
+            if(ui == nullptr) {std::cout << "`INITIALIZE()` FUNCTION MUST BE CALLED FIRST! (customsdl::UI::INITIALIZE_PARAMETERS(..). See the `template` example)."; return nullptr; }
+            return ui;
+        }
 
         //UI elements
+
+        /**
+         * Pane can be used as a background and, most importantly, a wall (a 'raycast' blocking area).
+         */
+        class pane{
+        public:
+            //note ui's vars.
+            UI::vars_struct vars;
+            pane() : ui(UI::GET_UI_POINTER()){
+                vars = ui->vars;
+            }
+            ~pane(){
+                ui->layers.erase(ui->layers.begin() + index);
+                ui->layers.shrink_to_fit();
+                delete this;
+            }
+
+            /**
+             * Create a pane that blocks raycasts and draws a rect.
+             * @param rect the pane's area.
+             * @param clr RGBA color values. Don't forget to set renderer's alfa mode for transparency.
+             * @param flags `0` or use `NO_VISUALS` flag to disable background and have an invisible 'wall'.
+             */
+            void renderPane(SDL_Rect rect, color clr, int flags);
+
+        private:
+            UI *ui;
+            bool initialized = true;
+            int index;
+        };
+        
+        //////////
+
         class button{
         public:
             //Note ui's vars.
             UI::vars_struct vars;
 
-            button() : ui(UI::INITIALIZE()){
+            button() : ui(UI::GET_UI_POINTER()){
                 vars = ui->vars;
+                background = new pane;
             }
 
             /**
             * Renders the button and applies colors when hovered. Functions as a button.
              * @param rect button area.
-             * @param onClick the function to call on click.
-             * @param data the void-pointer data to pass to the function.
-             * @param @param flags `0` or one or more flags. See `UIFLAGS` enum for available flags. Combine multiple of them with bitwise operator OR `|`.
+             * @param onClick the function to call on click. Passing `nullptr` will ignore button clicks.
+             * @param click_data the void-pointer data to pass to the function when clicked.
+             * @param onHold the function call when button is held. The interval to wait before function call is defined in `customsdl::UI::vars`. Passing `nullptr` will ignore button holds.
+             * @param hold_data the void-pointer data to pass to the function when held. 
+             * @param flags `0` or one or more flags. See `UIFLAGS` enum for available flags. Combine multiple of them with bitwise operator OR `|`.
              */
-            void renderButton(SDL_Rect rect, void (*onClick)(void*), void* data, Uint32 flags);
+            void renderButton(SDL_Rect rect, void (*onClick)(void*), void* click_data, void (*onHold)(void*), void* hold_data, Uint32 flags);
 
         private:
             UI *ui;
+            pane *background = nullptr;
+            bool initialized = true;
+            bool held = false;
         };
 
         ///////////////////////////////////////////////////////////////////////////////////////
@@ -240,12 +322,13 @@ namespace customsdl{
             //Note ui's vars.
             UI::vars_struct vars;
 
-            text() : ui(UI::INITIALIZE()){
+            text() : ui(UI::GET_UI_POINTER()){
                 vars = ui->vars;
             }
             ~text(){
                 SDL_DestroyTexture(last.texture);
                 SDL_FreeSurface(last.surface);
+                delete this;
             }
 
             SDL_Surface *getSurface(std::string text, color rgba, SDL_Rect textBox, font *fontData, Uint32 flags);
@@ -260,7 +343,6 @@ namespace customsdl{
              * @param flags `0` or one or more flags. See `UIFLAGS` enum for available flags. Combine multiple of them with bitwise operator OR `|`.
             */
             void renderText(std::string text, color rgba, SDL_Rect textBox, font *fontData, Uint32 flags);
-            //TODO: a more efficient way to apply colors. To the surface is one thing, but to the texture is faster - why modulation did not work?
 
         private:
             UI *ui;
@@ -278,8 +360,10 @@ namespace customsdl{
             //Note ui's vars.
             UI::vars_struct vars;
 
-            scrollBox() : ui(UI::INITIALIZE()){
+            scrollBox() : ui(UI::GET_UI_POINTER()){
                 vars = ui->vars;
+                background = new pane;
+                text_ = new text;
             }
 
             /**
@@ -304,11 +388,14 @@ namespace customsdl{
         
         private:
             UI *ui;
+            UI::pane *background = nullptr;
             int x, y;
             int shiftx=0, shifty=0;
             int clickedx, clickedy;
-            bool clicked = false;
+            bool state_clickedX = false, state_clickedY = false;
             double ratioy{}, ratiox{};
+            bool stickX = true, stickY = true; //as in "stick to a surface"
+            customsdl::UI::text *text_ = nullptr;
             
             //For button function
             std::vector<std::string> prev_in{};
@@ -326,7 +413,7 @@ namespace customsdl{
             //Note ui's vars.
             UI::vars_struct vars;
 
-            slider() : ui(UI::INITIALIZE()){
+            slider() : ui(UI::GET_UI_POINTER()){
                 vars = ui->vars;
             }
         
@@ -334,25 +421,17 @@ namespace customsdl{
             UI *ui;
         };
 
-        //TODO: add text input
-        
-        //TODO: add flag: hold button
-
-        //TODO: multi window rendering.
-
-        //TODO: support for changing window's size and auto spacing
-
     /////////////////
 
     private:
+        SDL_Color _8bitpalletecolors[256];
+
         //Private initialization function prevents creation of instances: customSDL::UI obj; <- error, inaccessible.
         UI(){
             for(int i = 0; i < 256; i++) _8bitpalletecolors[i].r = _8bitpalletecolors[i].g = _8bitpalletecolors[i].b = _8bitpalletecolors[i].a = i;
-        }
+        } 
         //Static pointer to the class will hold a single instance.
         static UI *ui;
-
-        SDL_Color _8bitpalletecolors[256];
 
         struct activeFaces_struct{
             std::string path;
@@ -361,6 +440,14 @@ namespace customsdl{
             FT_Library ft;
         };
         std::vector<activeFaces_struct> active_faces;
+        
+        struct layer_Struct{
+            //to check if it is the same object.
+            void *pointer;
+            //to check the object's area.
+            SDL_Rect rect;
+        };
+        std::vector<layer_Struct> layers; 
         
         /**
          * Converts an 8bit surface to a 32bit one.
@@ -373,6 +460,11 @@ namespace customsdl{
          * Returns an already loaded true type font or initializes a new one.
          */
         FT_FaceRec* useFont(std::string path, int fontsize);
+
+        /**
+         * Returns true if the cursor is right above an object (there's no other object in the way). It's like raycasting, but not. TODO: update this desc.
+         */
+        bool checkLayers(void *obj_pointer, SDL_Rect &obj_area);
     };
 }
 

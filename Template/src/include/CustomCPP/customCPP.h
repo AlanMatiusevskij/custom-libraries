@@ -3,7 +3,6 @@
 
 //Standard libraries
 #include<fstream>
-#include<type_traits>
 #include<vector>
 #include<string>
 #include<cmath>

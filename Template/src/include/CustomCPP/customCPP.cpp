@@ -194,7 +194,7 @@ customcpp::color* customcpp::getScreenPixels(HWND *hWnd, int wind_Width, int win
 
     color *pixels = new color[wind_Width * wind_Height];
 
-    //Save pixel RGB values in a more sensible format.
+    //Save pixel RGB values in a more intuitive format - struct with rgba values (alfa always 255) and origin is the top left corner.
     for(int x = 0; x < wind_Width; x++){
         for(int y = 0; y < wind_Height; y++){
             pixels[(wind_Height-y-1)*wind_Width+x] = {(uint8_t)data[4*(y*wind_Width+x)+2], (uint8_t)data[4*(y*wind_Width+x)+1], (uint8_t)data[4*(y*wind_Width+x)], 255};
