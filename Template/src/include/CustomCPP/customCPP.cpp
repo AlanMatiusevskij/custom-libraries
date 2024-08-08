@@ -4,6 +4,24 @@
 
 ///////////////////////////////
 
+#ifdef _WIN32
+    struct BGPROC{
+        int ID;
+        PROCESS_INFORMATION pi;
+        STARTUPINFO si;
+    };
+    std::vector<BGPROC> proc{};
+#else
+    /* UNIX */
+    struct BGPROC_STR{
+        int ID;
+        pid_t pidt;
+    };
+    std::vector<BGPROC_STR> proc{};
+#endif
+
+///////////////////////////////
+
 void customcpp::clearLine(int numb_of_lines){
     for(int i = 0; i < numb_of_lines; i++){
         std::cout << "\r\033[K" << std::flush; /* Clear a line */
@@ -11,6 +29,16 @@ void customcpp::clearLine(int numb_of_lines){
     }
     std::cout << std::flush;
     return;
+}
+
+void customcpp::clearStrLine(std::string &str, int numb_of_lines){
+    int numbCleared = 0;
+    for(int i = str.size()-1; i>=0; i--){
+        if(str[i] == '\n')
+            numbCleared++;
+        if(numbCleared == numb_of_lines) break;
+        str.pop_back();
+    }
 }
 
 std::vector<std::string> customcpp::stringSeperation(std::string in){
@@ -25,6 +53,14 @@ std::vector<std::string> customcpp::stringSeperation(std::string in){
     if(word.size()>0) split.push_back(word);
     return split;
 }
+
+std::string customcpp::strtolower(std::string in){
+    std::string _return = "";
+    for(char &chr : in)
+        _return += std::tolower(chr);
+    return _return;
+}
+
 ///////////////////////////////
 
 int customcpp::upsAverage(bool _cout){
@@ -157,6 +193,7 @@ char* customcpp::append_char_p(const char* array, const char* to_add){
 }
 
 ///////////////////
+#ifdef _WIN32
 
 static int CALLBACK __usedByBrowseFolder__BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM LParam, LPARAM lpData){
     if(uMsg == BFFM_INITIALIZED){
@@ -165,6 +202,7 @@ static int CALLBACK __usedByBrowseFolder__BrowseCallbackProc(HWND hwnd, UINT uMs
     }
     return 0;
 }
+
 std::string customcpp::browseFolder(std::string saved_path, std::string title){
     /* welcome to what I call `windows-magic` */
     TCHAR path[MAX_PATH];
@@ -179,7 +217,7 @@ std::string customcpp::browseFolder(std::string saved_path, std::string title){
     bi.lpfn = __usedByBrowseFolder__BrowseCallbackProc;
 
     std::wstring wsaved_path(saved_path.begin(),saved_path.end());
-    const wchar_t * path_param = wsaved_path.c_str();
+    const wchar_t *path_param = wsaved_path.c_str();
     bi.lParam = (LPARAM)path_param;
 
     /* Creates that window and the program freezes on this point. */
@@ -189,7 +227,7 @@ std::string customcpp::browseFolder(std::string saved_path, std::string title){
     if(pidl != 0){
         SHGetPathFromIDList(pidl, path);
 
-        IMalloc * imalloc = 0;
+        IMalloc *imalloc = 0;
         if(SUCCEEDED(SHGetMalloc(&imalloc))){
             imalloc->Free(pidl);
             imalloc->Release();
@@ -255,12 +293,35 @@ bool customcpp::windowIgnoreColor(HWND *windowHandle, color ingored_rgb){
     return SetLayeredWindowAttributes(*windowHandle, clr, 0, LWA_COLORKEY);
 }
 
-void customcpp::passCommands(std::vector<std::string> commands, int waitInterval){
+bool customcpp::isDriveOccupied(char &driveLetter) {
+    // Ensure driveLetter is uppercase and in the valid range
+    driveLetter = toupper(driveLetter);
+    if (driveLetter < 'A' || driveLetter > 'Z') {
+        std::cout << ACLR.BRIGHT_RED << "Invalid letter, must be between A and Z.\n" << ACLR.RESET;
+        return true;
+    }
+
+    // Construct the drive string (e.g., "D:\\")
+    std::string drivePath = std::string(1, driveLetter) + ":\\";
+    
+    // Check if the path is a valid directory
+    DWORD attributes = GetFileAttributes(charToLPWSTR(drivePath.c_str()));
+    
+    // If attributes are valid and the path exists, the drive is occupied
+    return (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY));
+}
+
+#endif
+
+//////////////////////
+/*Cross platform*/
+
+void customcpp::cmd(std::vector<std::string> commands, int waitInterval){
     if(commands.size() == 0) return;
     FILE *f = popen(commands[0].c_str(), "w");
 
     for(int i = 1; i < commands.size(); i++){
-        Sleep(waitInterval);
+        SLEEP(waitInterval);
 
         std::string cmd = commands[i] + "\n";
         fprintf(f, cmd.c_str());
@@ -271,73 +332,399 @@ void customcpp::passCommands(std::vector<std::string> commands, int waitInterval
     return;
 }
 
-std::string customcpp::getExecutablePath() {
-    std::vector<wchar_t> path(MAX_PATH);
-    DWORD length = GetModuleFileName(nullptr, path.data(), static_cast<DWORD>(path.size()));
+std::vector<std::string> customcpp::getcmd(std::vector<std::string> commands, int waitInterval){
+    if(commands.size() == 0) return {};
+    FILE *f = popen(commands[0].c_str(), "r");
+    for(int i = 1; i < commands.size(); i++){
+        SLEEP(waitInterval);
 
-    if (length == 0) {
-        std::cout << ACLR.BRIGHT_RED << L"Failed to get executable path. Error: " << GetLastError() << "\n" << ACLR.RESET;
-        return "";
+        std::string cmd = commands[i] + "\n";
+        fprintf(f, cmd.c_str());
+        fflush(f);
+    }  
+
+    /* Read the output*/
+    std::vector<std::string> _return;
+    char buffer[1024];
+
+    while(fgets(buffer, sizeof(buffer), f) != nullptr) _return.push_back(std::string(buffer));
+
+    pclose(f);
+    return _return;
+}
+
+void customcpp::CLEAR(){
+    #ifdef _WIN32
+        cmd({"cls"}, 0);
+    #else
+        cmd("{clear"}, 0);
+    #endif
+}
+
+void customcpp::SLEEP(int milliseconds){
+    #ifdef _WIN32
+        Sleep(milliseconds);
+    #else
+        usleep(milliseconds*1000);
+    #endif
+}
+
+bool customcpp::backgroundProcess(std::string command, bool waitForQuit, int ID){
+    static bool init = true;
+    if(init){
+        init = false;
+        proc.push_back({});
+        proc.clear();
     }
 
-    // If the buffer was too small, allocate a larger buffer and try again
-    if (length == path.size() - 1) {
-        path.resize(length + 1);
-        length = GetModuleFileName(nullptr, path.data(), static_cast<DWORD>(path.size()));
-        if (length == 0) {
-            std::cout << ACLR.BRIGHT_RED  << L"Failed to get executable path on retry. Error: " << GetLastError() << "\n" << ACLR.RESET;
-            return "";
+    #ifdef _WIN32
+        /* Windows */
+        proc.push_back({ID});
+        int indx = proc.size()-1;
+
+        ZeroMemory(&proc[indx].si, sizeof(proc[indx].si));
+        proc[indx].si.cb = sizeof(proc[indx].si);
+        ZeroMemory(&proc[indx].pi, sizeof(proc[indx].pi));
+
+        LPWSTR cmd = charToLPWSTR(command.c_str());
+        if(!CreateProcess(NULL, cmd, NULL, NULL, FALSE, CREATE_NEW_CONSOLE & CREATE_NO_WINDOW, NULL, NULL, &proc[indx].si, &proc[indx].pi)){
+            std::cout <<  ACLR.BRIGHT_RED << "CreateProcess failed (" << GetLastError() << ").\n" << ACLR.RESET;
+            return false;
         }
-    }
 
-    return std::string(path.begin(), path.begin() + length);
+        if(waitForQuit){
+            DWORD dwWaitResult = WaitForSingleObject(proc[indx].pi.hProcess, INFINITE);
+            if(dwWaitResult != WAIT_OBJECT_0) std::cout << ACLR.BRIGHT_RED << "WaitForSingleObject failed (" << GetLastError() << ").\n" << ACLR.RESET;
+            
+            CloseHandle(proc[indx].pi.hProcess);
+            CloseHandle(proc[indx].pi.hThread);
+            proc.erase(proc.begin() + indx);
+            proc.shrink_to_fit();
+        }
+        
+        /* process will end when application quits */
+    #else
+        /* Unix */
+        proc.push_back({ID});
+        int indx = proc.size()-1;
+
+        proc[indx].pidt = fork();
+        if(proc[indx].pidt == -1){
+            std::cout << ACLR.BRIGHT_RED << "fork() failed.\n" << ACLR.RESET;
+            return false;
+        }
+
+        if(proc[indx].pidt == 0){
+            /* Child */
+            setsid();
+            execlp(command.c_str(), command.c_str(), (char*)NULL);
+            /*Failed*/
+            std::cerr << ACLR.BRIGHT_RED << "execlp failed.\n" << ACLR.RESET;
+            exit(EXIT_FAILURE);
+        }
+        else{
+            /* Parent */
+            if(waitForQuit){
+                waitpid(proc[indx].pidt, NULL, 0);
+                proc.erase(proc.begin() + indx);
+                proc.shrink_to_fit();
+                return;
+            }
+        }
+    #endif    
+    return true;
+}
+
+void customcpp::ctrlC_backgroundProcess(int ID){
+    if(ID == -1){
+        for(int i = proc.size()-1; i>= 0; i--) ctrlC_backgroundProcess(proc[i].ID);
+        return;
+    }
+    if(proc.size() == 0) return;
+    int indx = 0;
+    for(int i = 0; i < proc.size(); i++)
+        if(proc[i].ID == ID){ indx = i; break; }
+
+    #ifdef _WIN32
+        if (!TerminateProcess(proc[indx].pi.hProcess, 1)) std::cerr  << ACLR.BRIGHT_RED<< "Failed to terminate process (" << GetLastError() << ").\n" + ACLR.RESET;
+
+        CloseHandle(proc[indx].pi.hProcess);
+        CloseHandle(proc[indx].pi.hThread);
+
+    #else
+        /* Unix */
+        if(kill(bgProc[indx], SIGINT) == -1) std::cerr << ACLR.BRIGHT_RED << "Failed to send SIGINT to process (" << pid << "): " << strerror(errno) << "\n" << ACLR.RESET;
+    
+    #endif  
+
+    proc.erase(proc.begin() + indx);
+    proc.shrink_to_fit();
+}
+
+bool customcpp::ping(std::string server){
+    #ifdef _WIN32
+        std::string command = "ping " + server + " -n 1 > NUL 2>&1";
+    #else
+        std::string command = "ping -c 1 " + server + " > /dev/null 2>&1";
+    #endif
+
+    if(std::system(command.c_str()) > 0) return false; /*Did not reach a server*/
+    return true;
+}
+
+#ifndef _WIN32
+    void setNonCanonicalMode(bool enable) {
+    static struct termios oldt, newt;
+    if (enable) {
+        // Save old terminal settings
+        tcgetattr(STDIN_FILENO, &oldt);
+        newt = oldt;
+
+        // Disable canonical mode and echo
+        newt.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    } else {
+        // Restore old terminal settings
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    }
+}
+#endif
+
+bool customcpp::getConsoleINPUT(std::string &YourString, std::string restrict_, bool RestrictiveInput, bool printToConsole){
+    #ifdef _WIN32
+        auto lambda = [&](){
+            char chr = _getch();
+            if(chr == 13){ /* Enter*/
+                std::cout << "\n";
+                return true;
+            }
+            if(chr == 8){ /* BackSpace */
+                if(YourString.size() != 0){
+                    YourString.pop_back();
+                    if(printToConsole) std::cout << "\b \b";
+                }
+            }
+            else{
+                bool pass = true;
+                if(restrict_.size()>0){
+                    if(restrict_[0] == '\b'){
+                        /* WHITELIST */
+                        pass = false;
+                        for(char whitelist:restrict_){
+                            if(whitelist==chr){
+                                pass = true;
+                                break;
+                            }
+                        }
+                    }
+                    else{
+                        /* BLACKLIST*/
+                        for(char blacklist : restrict_)
+                            if(blacklist == chr){
+                                pass = false;
+                                break;
+                            }
+                    }
+                }
+                if(pass) {YourString+=chr;if(printToConsole)std::cout << chr;}
+            }
+            return false;
+        };
+
+        if(RestrictiveInput){ while(true) if(lambda()) break; }
+        else if(_kbhit()) return lambda();
+
+    #else
+        auto lambda = [&](){
+            char chr = getchar();
+            if(chr == '\n'){ /* Enter*/
+                std::cout << "\n";
+                return true;
+            }
+            if(chr == 127){ /* BackSpace */
+                if(YourString.size() != 0) YourString.pop_back();
+            }
+            else{
+                bool pass = true;
+                if(restrict_.size()>0){
+                    if(restrict_[0] == '\b'){
+                        /* WHITELIST */
+                        pass = false;
+                        for(char whitelist:restrict_){
+                            if(whitelist==chr){
+                                pass = true;
+                                break;
+                            }
+                        }
+                    }
+                    else{
+                        /* BLACKLIST*/
+                        for(char blacklist : restrict_)
+                            if(blacklist == chr){
+                                pass = false;
+                                break;
+                            }
+                    }
+                }
+                if(pass) YourString+=chr;
+            }
+            return false;
+        }
+
+        setNonCanonicalMode(true);
+        if(RestrictiveInput){ while(true) if(lambda()) break; }
+        else return lambda();
+        setNonCanonicalMode(false);
+
+    #endif
+    return false;
 }
 
 void customcpp::setAutoStart(bool enable) {
-    std::string path = getExecutablePath();
-    std::wstring Wpath = std::wstring(path.begin(), path.end() + path.size());
+    #ifdef _WIN32
+        std::string path = getExecutablePath();
+        std::wstring Wpath = std::wstring(path.begin(), path.end() + path.size());
 
-    std::string appName = "";
-    for(int i = path.size()-4-1; i>=0; i--){
-        if(path[i] == '\\') break;
-        else appName+=path[i];
-    }
-    std::string tmp = appName; appName="";
-    for(int i = tmp.size()-1; i>=0; i--)
-        appName+=tmp[i];
-    
-    std::wstring Wappname = std::wstring(appName.begin(), appName.end()+appName.size());
+        std::string appName = getCurrentApplicationName();
+        std::wstring Wappname = std::wstring(appName.begin(), appName.end()+appName.size());
 
-    HKEY hKey;
-    LONG result;
+        HKEY hKey;
+        LONG result;
 
-    // Open the registry key
-    result = RegOpenKeyEx(HKEY_CURRENT_USER, REGISTRY_PATH.c_str(), 0, KEY_ALL_ACCESS, &hKey);
-    if (result != ERROR_SUCCESS) {
-        std::cout << ACLR.BRIGHT_RED << "Failed to open registry key. Error: " << result << "\n" << ACLR.RESET;
-        return;
-    }
-
-    if (enable) {
-        // Set the registry value to enable auto-start
-        result = RegSetValueEx(hKey, Wappname.c_str(), 0, REG_SZ, reinterpret_cast<const BYTE*>(Wpath.c_str()), (Wpath.length() + 1) * sizeof(wchar_t));
+        // Open the registry key
+        result = RegOpenKeyEx(HKEY_CURRENT_USER, REGISTRY_PATH.c_str(), 0, KEY_ALL_ACCESS, &hKey);
         if (result != ERROR_SUCCESS) {
-            std::cout << ACLR.BRIGHT_RED << "Failed to set registry value. Error: " << result << "\n" << ACLR.RESET;
+            std::cout << ACLR.BRIGHT_RED << "Failed to open registry key. Error: " << result << "\n" << ACLR.RESET;
+            return;
+        }
+
+        if (enable) {
+            // Set the registry value to enable auto-start
+            result = RegSetValueEx(hKey, Wappname.c_str(), 0, REG_SZ, reinterpret_cast<const BYTE*>(Wpath.c_str()), (Wpath.length() + 1) * sizeof(wchar_t));
+            if (result != ERROR_SUCCESS) {
+                std::cout << ACLR.BRIGHT_RED << "Failed to set registry value. Error: " << result << "\n" << ACLR.RESET;
+            } else {
+                std::cout << "Auto-start enabled." << "\n";
+            }
         } else {
+            // Delete the registry value to disable auto-start
+            result = RegDeleteValue(hKey, Wappname.c_str());
+            if (result != ERROR_SUCCESS) {
+                std::cout << ACLR.BRIGHT_RED << L"Failed to delete registry value. Error: " << result << "\n" << ACLR.RESET;
+            } else {
+                std::cout << "Auto-start disabled." << "\n";
+            }
+        }
+        // Close the registry key
+        RegCloseKey(hKey);
+    #else
+        /* Unix */
+        std::string appName = getCurrentApplicationName();
+        if(true){
+            std::ofstream write("/etc/systemd/system/"+appName+".service");
+            if(!write) std::cerr << ACLR.BRIGHT_RED << "Couldn't write to a file when enabling autostart for " + appName << "\n" + ACLR.RESET;
+
+            serviceFile << "[Unit]\n";
+            serviceFile << "Description=" + appName + " application, enable autostart.\n";
+            serviceFile << "After=network.target\n\n";
+
+            serviceFile << "[Service]\n";
+            serviceFile << "ExecStart="+getExecutablePath()+"\n";
+            serviceFile << "Restart=always\n";
+            serviceFile << "User="+getCurrentUserName()+"\n";
+            serviceFile << "Group="+getCurrentUserName() + "\n\n";
+
+            serviceFile << "[Install]\n";
+            serviceFile << "WantedBy=multi-user.target\n";
+
+            serviceFile.close();
+            cmd({"sudo systemctl enable " + appName + ".service", "sudo systemctl start " + appName + ".service", "sudo systemctl daemon-reload"}, 50);
             std::cout << "Auto-start enabled." << "\n";
         }
-    } else {
-        // Delete the registry value to disable auto-start
-        result = RegDeleteValue(hKey, Wappname.c_str());
-        if (result != ERROR_SUCCESS) {
-            std::cout << ACLR.BRIGHT_RED << L"Failed to delete registry value. Error: " << result << "\n" << ACLR.RESET;
-        } else {
+        else{
+            cmd({ "sudo systemctl stop " + appName + ".service", "sudo systemctl disable " + appName + ".service", "sudo rm /etc/systemd/system/" + appName + ".service", "sudo systemctl daemon-reload"}, 50);
             std::cout << "Auto-start disabled." << "\n";
         }
-    }
+    #endif
+}
 
-    // Close the registry key
-    RegCloseKey(hKey);
+std::string customcpp::getCurrentUserName() {
+    #ifdef _WIN32
+        WCHAR username[UNLEN + 1]; // Buffer for the user name
+        DWORD username_len = UNLEN + 1; // Length of the buffer
+
+        // Get the user name
+        if (GetUserNameW(username, &username_len)) {
+            // Convert wide string to narrow string
+            std::wstring wide_username(username, username_len - 1); // username_len includes null terminator, so subtract 1
+            std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+            return converter.to_bytes(wide_username);
+        } else {
+            std::cout << ACLR.BRIGHT_RED << "Failed to get user name. Error: " << GetLastError() << "\n" << ACLR.RESET;
+            return "";
+        }
+    #else
+        /* Unix */
+        uid_t uid = getuid();
+        struct passwd *pw = getpwuid(uid);
+        if(pw) return std::string(pw->pw_name);
+        
+    #endif
+    return "";
+}
+
+std::string customcpp::getCurrentApplicationName(){
+    #ifdef _WIN32
+        std::string reversed_appname = "";
+        std::string path = getExecutablePath();
+        std::string appname = "";
+
+        for(int i = path.size()-1; i>=0; i--)
+            if(path[i] == '\\' || path[i] == '/') break;
+            else reversed_appname+=path[i];
+
+        for(int i = reversed_appname.size()-1; i>=0; i--)
+            appname+=reversed_appname[i];
+
+        return appname;
+    #else
+        return basename(getExecutablePath()); 
+    #endif
+    return "";
+}
+
+std::string customcpp::getExecutablePath() {
+    std::string path = "";
+    #ifdef _WIN32
+        std::vector<wchar_t> wpath(MAX_PATH);
+        DWORD length = GetModuleFileName(nullptr, wpath.data(), static_cast<DWORD>(wpath.size()));
+
+        if (length == 0) {
+            std::cout << ACLR.BRIGHT_RED << "Failed to get executable path. Error: " << GetLastError() << "\n" << ACLR.RESET;
+            return "";
+        }
+
+        // If the buffer was too small, allocate a larger buffer and try again
+        if (length == wpath.size() - 1) {
+            wpath.resize(length + 1);
+            length = GetModuleFileName(nullptr, wpath.data(), static_cast<DWORD>(wpath.size()));
+            if (length == 0) {
+                std::cout << ACLR.BRIGHT_RED  << "Failed to get executable path on retry. Error: " << GetLastError() << "\n" << ACLR.RESET;
+                return "";
+            }
+        }
+
+        path = std::string(path.begin(), path.begin() + length);
+    #else
+        /* Unix */
+        char cpath[1024];
+        ssize_t len = readlink("/proc/self/exe", cpath, sizeof(cpath) - 1);
+        if (len != -1) {
+            cpath[len] = '\0'; // Null-terminate the string
+            path = std::string(cpath);
+        } else return "";
+    #endif
+    return path;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -351,6 +738,7 @@ std::vector<std::string> customcpp::findRow(std::string keyword, std::string pat
 
     std::string line;
     int index = -1;
+
     while(!file.eof()){
         std::getline(file, line);
 
@@ -362,6 +750,7 @@ std::vector<std::string> customcpp::findRow(std::string keyword, std::string pat
                     index = i+1;
                     break;
                 }
+                key+=' ';
             }
             else key+=line[i];
 
@@ -380,4 +769,60 @@ std::vector<std::string> customcpp::findRow(std::string keyword, std::string pat
 
     file.close();
     return data;
+}
+
+bool customcpp::FIND(std::string whatToFind, std::string &whereToFind, int &indx){
+    bool itsPath = false;
+    if(whatToFind.size() == 0) return false;
+
+    /* determine if provided "whereToFind" is a path file. */
+    #ifdef _WIN32
+        if(whereToFind.size() >= 2)
+        if(whereToFind[0] >= 'A' && whereToFind[0] <= 'Z' && (whereToFind[1] == '\\' || whereToFind[1] == '/')) itsPath = true;
+    #else
+        if(whereToFind[0] == '/') itsPath = true;
+    #endif
+
+    if(itsPath){
+        std::ifstream file(whereToFind);
+        if(!file.is_open()){
+            std::cerr << ACLR.BRIGHT_RED << "Couldn't open file '" << whereToFind << "'.\n" << ACLR.RESET;
+            return false;
+        }
+
+        std::string oneWholeFile = "";
+        std::string line;
+        while(!file.eof()){
+            std::getline(file, line);
+            oneWholeFile+=line;
+        }
+        file.close();
+
+        /* What "whereToFind" to its contents */
+        whereToFind = oneWholeFile;
+    }
+
+    if(whatToFind.size() > whereToFind.size()) return false;
+    size_t pos = whereToFind.find(whatToFind);
+    if(pos == std::string::npos) return false;
+    
+    if(indx != -1) indx = static_cast<int>(pos);
+    return true;
+}
+
+void customcpp::TRUNCATEFILE(int line, std::string file){
+    std::ifstream read(file);
+    std::vector<std::string> lines;
+    while(!read.eof()){
+        lines.push_back("");
+        std::getline(read, lines[lines.size()-1]);
+    }
+    read.close();
+
+    std::ofstream write(file, std::fstream::trunc);
+    for(int i = 0; i < lines.size(); i++){
+        if(i != line) write << lines[i] + "\n";
+    }
+    write.close();
+    return;
 }
