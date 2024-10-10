@@ -48,7 +48,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
     void customsdl::blitSurface(pixel coords, SDL_Surface *to, SDL_Rect areaFrom, SDL_Surface *from){
         /* the purpose is to just make this a bit more intuitive. */
         SDL_Rect areaTo = {coords.x, coords.y, to->w, to->h};
-        SDL_BlitSurface(from, &areaFrom, from, &areaTo);
+        SDL_BlitSurface(from, &areaFrom, to, &areaTo);
     }
 
     void customsdl::blitSurface(pixel coords, SDL_Surface *to, SDL_Surface *from){
@@ -125,7 +125,8 @@ customsdl::UI *customsdl::UI::ui = nullptr;
         } 
     } 
 
-     void customsdl::drawToSurface(SDL_Surface *surf32, pixel coords, color &clr, bool blend){
+    void customsdl::drawToSurface(SDL_Surface *surf32, pixel coords, color &clr, bool blend){
+        if(coords.y >= surf32->h) return; 
         if(clr.a != 255 && blend){
             float srcAlpha = clr.a/255.0f;
 
@@ -162,12 +163,14 @@ customsdl::UI *customsdl::UI::ui = nullptr;
                 drawToSurface(surface, {x, y}, clr, blend);
     }
 
-    HWND customsdl::getWindowHandle(SDL_Window *window){
-        SDL_SysWMinfo wmInfo;
-        SDL_VERSION(&wmInfo.version);
-        SDL_GetWindowWMInfo(window, &wmInfo);
-        return wmInfo.info.win.window;
-    }
+    #ifdef _WIN32
+        HWND customsdl::getWindowHandle(SDL_Window *window){
+            SDL_SysWMinfo wmInfo;
+            SDL_VERSION(&wmInfo.version);
+            SDL_GetWindowWMInfo(window, &wmInfo);
+            return wmInfo.info.win.window;
+        }
+    #endif
 
 /* UI functions */
     bool customsdl::UI::layerCheck(void *ptr){
@@ -234,7 +237,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
     void customsdl::UI::pane::renderPane(SDL_Rect rect, color clr, int orderInLayer, Uint32 flags){
         if(ui->CHECK){
             /* Store the pane in the layers list */
-            ui->layers.push_back({new PANE_STRUCT({rect, clr, flags}), nullptr, nullptr, nullptr, orderInLayer});
+            ui->layers.push_back({new PANE_STRUCT({rect, clr, flags}), nullptr, nullptr, nullptr, nullptr, orderInLayer});
         }
     }
 
@@ -248,20 +251,20 @@ customsdl::UI *customsdl::UI::ui = nullptr;
             if(!(flags & UIFLAGS::NO_PANE)) ui->pane.renderPane(rect, ui->data.background_color, orderInLayer, flags); 
 
             /* Store the button in the layers list */
-            ui->layers.push_back({nullptr, new BUTTON_STRUCT({rect, onClick, click_data, onHold, hold_data, 0, flags}), nullptr, nullptr, orderInLayer});  
+            ui->layers.push_back({nullptr, new BUTTON_STRUCT({rect, onClick, click_data, onHold, hold_data, 0, flags}), nullptr, nullptr, nullptr, orderInLayer});  
         }
    }
 
    void customsdl::UI::text::renderText(std::string text, SDL_Rect rect, color clr, int orderInLayer, int fontSize, Uint32 flags){
-        if(ui->CHECK)  ui->layers.push_back({nullptr,nullptr, new TEXT_STRUCT({text, clr, rect, fontSize, ui->data.default_font, flags}), nullptr, orderInLayer});
+        if(ui->CHECK)  ui->layers.push_back({nullptr,nullptr, new TEXT_STRUCT({text, clr, rect, fontSize, ui->data.default_font, flags}), nullptr, nullptr, orderInLayer});
     }
 
     void customsdl::UI::text::renderText(std::string text, SDL_Rect rect, color clr, int orderInLayer, int fontSize, std::string fontPath, Uint32 flags){
-        if(ui->CHECK) ui->layers.push_back({nullptr,nullptr, new TEXT_STRUCT({text, clr, rect, fontSize, fontPath, flags}), nullptr, orderInLayer});
+        if(ui->CHECK) ui->layers.push_back({nullptr,nullptr, new TEXT_STRUCT({text, clr, rect, fontSize, fontPath, flags}), nullptr, nullptr, orderInLayer});
     }
 
     void customsdl::UI::scrollbox::renderSurfaceScrollBox(SDL_Surface *surface, SDL_Rect rect, int orderInLayer, Uint32 flags){
-        if(ui->CHECK) ui->layers.push_back({nullptr,nullptr,nullptr, new SCROLLBOX_STRUCT({rect, {}, flags, 0, surface}), orderInLayer});
+        if(ui->CHECK) ui->layers.push_back({nullptr,nullptr,nullptr, new SCROLLBOX_STRUCT({rect, {}, flags, 0, surface}), nullptr, orderInLayer});
     }
 
     void customsdl::UI::scrollbox::renderTextScrollBox(std::string text, SDL_Rect rect, color clr, int orderInLayer, int fontSize, std::string fontPath, Uint32 flags){
@@ -270,7 +273,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
             ui->text.renderText(text, rect, clr, orderInLayer, fontSize, fontPath, flags);
             UI::TEXT_STRUCT *ptr = ui->layers[ui->layers.size()-1].TEXT;
             ptr->render = false;
-            ui->layers.push_back({nullptr,nullptr,nullptr, new SCROLLBOX_STRUCT({rect, {}, flags, 1}), orderInLayer});
+            ui->layers.push_back({nullptr,nullptr,nullptr, new SCROLLBOX_STRUCT({rect, {}, flags, 1}), nullptr, orderInLayer});
             ui->layers[ui->layers.size()-1].SCROLLBOX->text_ptr = ptr;
         }
     }
@@ -291,7 +294,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
             ui->text.renderText(in, rect, clr, orderInLayer, fontSize, fontPath, flags);
             UI::TEXT_STRUCT *ptr = ui->layers[ui->layers.size()-1].TEXT;
             ptr->render = false;
-            ui->layers.push_back({nullptr, nullptr, nullptr, new SCROLLBOX_STRUCT({rect, entries, flags, 2}), orderInLayer});
+            ui->layers.push_back({nullptr, nullptr, nullptr, new SCROLLBOX_STRUCT({rect, entries, flags, 2}), nullptr, orderInLayer});
             ui->layers[ui->layers.size()-1].SCROLLBOX->text_ptr = ptr;
             ui->layers[ui->layers.size()-1].SCROLLBOX->onClick = onClick;
             ui->layers[ui->layers.size()-1].SCROLLBOX->fontSize = fontSize;
@@ -300,6 +303,18 @@ customsdl::UI *customsdl::UI::ui = nullptr;
 
     void customsdl::UI::scrollbox::renderButtonScrollBox(std::vector<std::string> entries, SDL_Rect rect, color clr, int orderInLayer, int fontSize, void (*onClick)(std::string), Uint32 flags){
         if(ui->CHECK) ui->scrollbox.renderButtonScrollBox(entries, rect, clr, orderInLayer, fontSize, ui->data.default_font, onClick, flags);
+    }
+
+    void customsdl::UI::draw::drawLine(point point0, point point1, color clr, int orderInLayer){
+        if(ui->CHECK) ui->layers.push_back({nullptr, nullptr, nullptr, nullptr, new DRAW_STRUCT({clr, false, {}, true, point0, point1, nullptr}), orderInLayer});
+    }
+
+    void customsdl::UI::draw::drawRect(SDL_Rect rect, color clr, int orderInLayer){
+        if(ui->CHECK) ui->layers.push_back({nullptr, nullptr, nullptr, nullptr, new DRAW_STRUCT({clr, true, rect, false, {}, {}, nullptr}), orderInLayer});
+    }
+    
+    void customsdl::UI::draw::drawSurface(SDL_Surface *surf32RGBA, SDL_Rect rect, int orderInLayer){
+        if(ui->CHECK) ui->layers.push_back({nullptr, nullptr, nullptr, nullptr, new DRAW_STRUCT({{}, false, rect, false, {}, {}, surf32RGBA}), orderInLayer});
     }
 
     void customsdl::UI::__rend_pane(PANE_STRUCT *str){
@@ -400,7 +415,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
         /* Check if mouse hovered, while button is not held */
         if(str->state != 2){
             /* Check if hovering over "this" button */
-            if(onRect(str->rect, mx, my)){
+            if(onRect(str->rect, mx, my) && !(str->flags & UIFLAGS::BUTTON_STATE_INACTIVE)){
                 /* ...while another button on top does not interfere */
                 if(layerCheck((void*)str))
                 /* If this flag is not used */
@@ -552,7 +567,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
 
     void customsdl::UI::__rend_surface_scrollbox(SCROLLBOX_STRUCT *str){
         __CORE_SCROLLBOX(str);
-        if(!(str->flags & UIFLAGS::NO_BUTTON_TEXT)){
+        if(!(str->flags & UIFLAGS::NO_BUTTON_TEXT) && str->surface != nullptr){
             SDL_Rect renderArea = {int(str->shiftx*str->ratiox), int(str->shifty*str->ratioy), std::min(str->rect.w, str->surface->w), std::min(str->rect.h, str->surface->h)};
             SDL_Rect destArea = {str->rect.x, str->rect.y, std::min(str->rect.w, str->surface->w), std::min(str->rect.h, str->surface->h)};
             SDL_BlitSurface(str->surface, &renderArea, ui->sDisplay, &destArea);
@@ -580,7 +595,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
         /* assign surface pointer */
         if(str->text_ptr != nullptr && str->surface == nullptr) str->surface = str->text_ptr->surface;
         if(str->surface == nullptr) return;
-
+        
         /* Vertical */
             /* Determine scroll bar's height */
             str->ratioy = (float)(str->surface->h)/str->rect.h;
@@ -645,8 +660,9 @@ customsdl::UI *customsdl::UI::ui = nullptr;
                 if(str->flags & UIFLAGS::HORIZONTAL_SCROLLBAR_STICK)
                     str->shiftx = str->rect.w-bar_width-1;
         
-        if(!(str->flags & UIFLAGS::NO_VERTICAL_SCROLLBAR) && str->ratioy > 1)
-            fillSurfaceRect(str->vert_bar, ui->sDisplay, ui->data.bar_color, true);
+        if(!(str->flags & UIFLAGS::NO_VERTICAL_SCROLLBAR) && str->ratioy > 1){
+            fillSurfaceRect(str->vert_bar, ui->sDisplay, ui->data.bar_color, false);
+        }
         if(!(str->flags & UIFLAGS::NO_HORIZONTAL_SCROLLBAR) && str->ratiox > 1)
             fillSurfaceRect(str->horiz_bar, ui->sDisplay, ui->data.bar_color, true);
 
@@ -681,6 +697,18 @@ customsdl::UI *customsdl::UI::ui = nullptr;
         return;
     }
 
+    void customsdl::UI::__rend_draw(DRAW_STRUCT *str){
+        if(str->draw_line){
+            drawSurfaceLine(str->point0, str->point1, ui->sDisplay, str->clr, true);
+        }
+        else if(str->draw_rect){
+            drawSurfaceRect(str->rect, ui->sDisplay, str->clr, true);
+        }
+        else if(str->surf != nullptr){
+            SDL_BlitScaled(str->surf, NULL, ui->sDisplay, &str->rect);
+        }
+    }
+
     void customsdl::UI::update(){
         /*to calculate how much time passed*/
         static std::chrono::steady_clock::time_point then, now; 
@@ -691,20 +719,26 @@ customsdl::UI *customsdl::UI::ui = nullptr;
             then = now;
             CHECK = true;
 
+            //customcpp::upsAverage(true);
+
             /* Update mouse positions, poll events */
-            SDL_PollEvent(ui->data.event);
-            SDL_GetMouseState(&mx, &my);
+
+            //TODO FIX THIS
+            /* Ok i don't know what to do here. On unix, hyprland (wayland based), polling events is so damn slow and im confused. */
+            if(!ui->data.not_poll_events) SDL_PollEvent(ui->data.event);
+            if(!ui->data.not_poll_mouse_state) SDL_GetMouseState(&mx, &my);
+
+            /* Mouse clicks */
+            //TODO FIX on Hyprland/wayland/arch?(whats the root cause even)
+            if(ui->data.event->type == SDL_MOUSEBUTTONDOWN && ui->data.event->button.button == SDL_BUTTON_LEFT) pressed_qm = true;
+            else pressed_qm = false;
+            if(ui->data.event->type == SDL_MOUSEBUTTONUP && ui->data.event->button.button == SDL_BUTTON_LEFT) unpressed_qm = true;
+            else unpressed_qm = false;
         }
     }
 
     void customsdl::UI::present(){
         if(CHECK){
-            /* Mouse clicks */
-            if(ui->data.event->type == SDL_MOUSEBUTTONDOWN && ui->data.event->button.button == SDL_BUTTON_LEFT) pressed_qm = true;
-            else pressed_qm = false;
-            if(ui->data.event->type == SDL_MOUSEBUTTONUP && ui->data.event->button.button == SDL_BUTTON_LEFT) unpressed_qm = true;
-            else unpressed_qm = false;
-
             /* Check if there's a need to update */
                 /* Use merge sort to sort based on `order in layer` (ascending order), then by the last function call (from left to right): {{1,obj4}, {2,obj2}, {2,obj3}=>{{2,obj3},{2,obj2},{1,obj4}} */
             layers = customcpp::mergeSort<UI::__object_layer_pos_struct>(layers,[](UI::__object_layer_pos_struct &a, UI::__object_layer_pos_struct&b){return a.order_in_layer <= b.order_in_layer;}); /* primitive '<=', see the gist. */
@@ -778,6 +812,22 @@ customsdl::UI *customsdl::UI::ui = nullptr;
                             }
                             /* One of the pointers is not a pane nullptr, check if one of them is a different element, if so, update, if not, skip. */
                             else if(layers[i].SCROLLBOX != layers_old[i].SCROLLBOX){
+                                UPDATE = true;
+                                break;
+                            }
+                        /* Draw checks */
+                            /* Check if both pointers exist, then compare values*/ 
+                            if(layers[i].DRAW != nullptr && layers_old[i].DRAW != nullptr){
+                                UI::DRAW_STRUCT *old = layers_old[i].DRAW;
+                                UI::DRAW_STRUCT *new_ = layers[i].DRAW;
+
+                                if(!compareRects(new_->rect, old->rect) || !compareColors(new_->clr, old->clr) || !commparePoints(new_->point0, old->point0) || !commparePoints(new_->point1, old->point1) || new_->surf != old->surf){
+                                    UPDATE = true;
+                                    break;
+                                }
+                            }
+                            /* One of the pointers is not a pane nullptr, check if one of them is a different element, if so, update, if not, skip. */
+                            else if(layers[i].DRAW != layers_old[i].DRAW){
                                 UPDATE = true;
                                 break;
                             }
@@ -863,6 +913,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
                         if(layers_old[i].TEXT != nullptr) if(layers_old[i].TEXT->toDiscard) SDL_FreeSurface(layers_old[i].TEXT->surface);
                         delete layers_old[i].TEXT;
                         delete layers_old[i].SCROLLBOX;
+                        delete layers_old[i].DRAW;
                         /* OTHERS ... */
                     }
                     layers_old.clear();
@@ -871,6 +922,13 @@ customsdl::UI *customsdl::UI::ui = nullptr;
                     /* Clear the surface */ 
                     SDL_FreeSurface(sDisplay);
                     sDisplay = createSurface(ui->data.wind_width, ui->data.wind_height);
+
+                    /* Draw the background - intensive! */
+                    for(int x = 0; x < this->data.wind_width; x++){
+                        for(int y = 0; y < this->data.wind_height; y++){
+                            drawToSurface(this->sDisplay, {x, y}, ui->data.background_color, false);
+                        }
+                    }
 
                     /* Render everything in a proper order */
                     for(int i = 0; i < layers.size(); i++){
@@ -882,6 +940,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
                             else if(layers[i].SCROLLBOX->whichScrollbox == 1) __rend_text_scrollbox(layers[i].SCROLLBOX);
                             else if(layers[i].SCROLLBOX->whichScrollbox == 2) __rend_button_scrollbox(layers[i].SCROLLBOX);
                         }
+                        else if(layers[i].DRAW != nullptr) __rend_draw(layers[i].DRAW);
                         /* Others...*/
                     }
 
@@ -898,6 +957,7 @@ customsdl::UI *customsdl::UI::ui = nullptr;
                         delete layers[i].TEXT;
                         delete layers[i].PANE;
                         delete layers[i].SCROLLBOX;
+                        delete layers[i].DRAW;
                         /* others...*/
                     }
 
@@ -909,7 +969,9 @@ customsdl::UI *customsdl::UI::ui = nullptr;
 
         
         /* Render all GUI */
-        SDL_RenderCopy(data.renderer, tDisplay, NULL, NULL);
+        SDL_RenderCopy(ui->data.renderer, tDisplay, NULL, NULL);
         
         return;
     }
+
+    /* drawing the scrollbar with blend enabled breaks somehow on an emoty surface.*/

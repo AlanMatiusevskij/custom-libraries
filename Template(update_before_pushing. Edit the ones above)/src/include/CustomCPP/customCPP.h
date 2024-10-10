@@ -20,9 +20,6 @@
 #include<codecvt>
 #include<cstdio>
 #include<sstream>
-#include<atomic>
-#include<csignal>
-#include<map>
 
 #ifndef UNICODE 
     #define UNICODE 
@@ -42,6 +39,9 @@
 #include<shlwapi.h>
 #include<shellapi.h>
 
+#define TRAY_ICON_ID 1
+#define WM_TRAYICON (WM_USER + 1)
+
 /* UNIX */
 #else
 #include<unistd.h>
@@ -49,25 +49,16 @@
 #include<sys/wait.h>
 #include<sys/select.h>
 #include<signal.h> 
-#include<sys/ioctl.h>
 #include<pwd.h>
 #include<termios.h>
-#include<dirent.h>
 #include<fcntl.h>
 #include<libgen.h>
-#include<sys/stat.h>
-#include<sys/prctl.h>
 #endif
 /////////////////
 
 namespace customcpp{
-    const float pi = 3.14159;
     struct pixel{
         int x, y;
-    };
-    using point = pixel;
-    struct pointf{
-        float x, y;
     };
     struct color{
         uint8_t r;
@@ -154,11 +145,6 @@ namespace customcpp{
      */
     std::string strtolower(std::string in);
 
-    /**
-    * Function to check if two customcpp points/pixels are equal.
-    */
-    bool commparePoints(point point1, point point2);
-
     //////////////
 
     /**
@@ -202,23 +188,6 @@ namespace customcpp{
      * @return a number of type `double`.
     */
     double stringToDouble(std::string in);
-
-    /**
-     * Returns a number of `float` type represented as a string.
-     * @param in a `float` type number.
-     * @param precision number of fractional values.
-     * @return a `float` type numbers as a string.
-    */
-    std::string floatToString(float in, int precision);
-
-    /**
-     * Returns a number of `float` type from a given string.
-     * 
-     * Fractional part can be seperated either by a comma or a dot.
-     * @param in a string holding a number.
-     * @return a number of type `float`.
-    */
-    float stringToFloat(std::string in);
 
     /** 
      * Must be deallocated manually!
@@ -274,42 +243,28 @@ namespace customcpp{
      */
     bool isDriveOccupied(char &driveLetter);
 
-    #else
-        /* Unix-OS specific functions */
-    /**
-     * Returns a vector string of all directory names within the specified path.
-     */
-    std::vector<std::string> listDirectories(const char* pth);
-
-    /**
-     * A template to launch a funciton that runs in the background.
-     * All data passed is copied and NOT shared.
-     */
-    void childFunction(void (*foo)(void*), void *data);
-    
     #endif
 
     ////////////////////////////////
         /* Unix-windows cross platform functions*/
 
     /**
-     * Pass a list of commands. Each string is considered as an individual command.
+     * Pass a list of commands. Each string's end is considered as the end of command that has to be passed to command line.
      * @param commands a vector of strings 
      * @param waitInterval time to wait before sending each command in milliseconds.
      */
     void cmd(std::vector<std::string> commands, int waitInterval);
 
     /**
-     * Pass a list of commands. Each string is considered as an individual command.
-     * 
-     * @return Returns commands' output line by line.
+     * Pass a list of commands. Each string's end is considered as the end of command that has to be passed.
+     * Returns command's output line by line.
      * @param commands a vector of strings 
      * @param waitInterval time to wait before sending each command in milliseconds.
      */
     std::vector<std::string> getcmd(std::vector<std::string> commands, int waitInterval);
     
     /**
-     * Clears the console by calling a `CLS` if on windows and `CLEAR` if on Unix.
+     * Clears the console by calling a CLS if on windows and CLEAR if on Unix.
      */
     void CLEAR();
 
@@ -362,25 +317,13 @@ namespace customcpp{
     /* Returns application's that called this function path*/
     std::string getExecutablePath();
 
-	/*
-	 * Returns true if given argument matches with requiredArgument.
-	 * @param argument the argument given by a user which needs to be checked.
-	 * @param requiredArgument the desired argument.
-	 * @param singleLetter checks if argument's first letter matches with requiredArgument's first letter ('-' doesnt count as a letter). If false, will check arguments one to one.
-	 */
-	bool checkGivenArgument(char *argument, std::string requiredArgument, bool singleLetter);
-
     //////////////////////////////////////////////////////////////
         /* Algorithms */
 
     /**
      * Merge sort. A stable sorting function of O(n*log(n)) time complexity.
      * 
-     * ---
-     * 
      * + Check this for syntax: https://gist.github.com/AlanMatiusevskij/9853775e3649dbd66795465b933c82ec ).
-     * 
-     * ---
      * 
      * @param array an array to sort of any 'proper' type.
      * @param compare a lambda function of this format: `[]('your_type' &a, 'your_type' &b){return a <= b; }. Check the github gist, there's a comment about how primitives affect the sorting.
@@ -428,93 +371,28 @@ namespace customcpp{
         /* File systems (?) */
 
     /**
-     * - Returns a line in a file which starts with the given keyword.
+     * Far from a decent approach, but I don't want to spend time searching for a good library and learn to use it.
      * 
-     * - The keyword may contain whitespaces. 
+     * Data file should be structured like this:
      * 
-     * @param area although a struct with x.y variables, this is used to describe FROM(x) which line TO(y) which line to read. 
+     * + Firstkeyword All my data is here
      * 
-     * If both numbers are equal ({0,0}), then will read the whole file instead.
+     * + Secondkeyword And here
      * 
-     * If the second (y) number is lesser than the first ({5,2}), will read till the end of file from line 5.
+     * + Thirdkeyword and more here
      * 
-     * - However, if first(x) number is negative, will not read anything and return an empty string.
+     * + Key Words Can Be Multiple Strings DATA1 DATA2 DATA3
      * 
-     * - If 'keyword' is not found, returns an empty string
-     * 
-     * ---
-     * 
+     * @param keyword the first word in a list is always the keyword
      * @param pathToFile path to any text based file.
-     * @return empty string "" or the whole line, including the keyword.
      */
-    std::string findLine(std::string keyword, point area, std::string pathToFile);
+    std::vector<std::string> findRow(std::string keyword, std::string pathToFile);
 
     /**
-     * - Returns the `area` of a header:
-     * 
-     * 1| [this is a header]
-     * 
-     * 2| somedata: 
-     * 
-     * 3| a line of text to be used 
-     * 
-     * 4| alsoData:
-     * 
-     * 5| [another header or end of file]
-     * 
-     * - The area returned would be in a point variable, in this example, {2, 4} -> the lines the header defines, inclusively from line 2 to line 4. 
-     * @return return `area` of lines. If the header name was not found, {-1, 0} instead.
-     */
-    point findHeader(std::string headerName, std::string pathToFile);
-
-    /**
-     * @param line the line defined as this => `myBoolean: true` or `my boolean:false` (however, generally whitespaces are not accepted).
-     * 
-     * ---
-     * 
-     * - Searches for the first `:` symbol inside a line and extracts 'true' or 'false' keywords that come after it. 
-     * 
-     * - The line must have only a single `:` character. There can be multiple leading or trailing whitespaces, but the `true` or `false` phrases must stay intact.
-     * 
-     * If fails, the original value is preserved.
-     * 
-     * @returns true on successful boolean extraction and false if fails.
-     */
-    bool getBoolean(std::string line, bool &value);
-    
-    /**
-     * @param line the line defined as this => `myScalar: 0.5` or `my scalar:-5` (however, generally whitespaces are not accepted).
-     * 
-     * ---
-     * 
-     * - Searches for the first `:` symbol inside a line and extracts the numerical value that come after it, which can be positive or negative and decimal digits (seperator can be both commas and dots). 
-     * 
-     * - The line must have only a single `:` character. There can be multiple leading or trailing whitespaces, but the number itself must stay intact.
-     * 
-     * If fails, the original value is preserved.
-     * 
-     * @returns true on successful numerical extraction and false if fails. 
-     */
-    bool getScalar(std::string line, double &value);
-
-    /**
-     * - Simply erases all leading characters until the first, and including, the `:` character;
-     * 
-     * - Also removes all trailing and leading whitespaces.
-     * 
-     * If fails, the original value is preserved.
-     * 
-     * @returns false if string doesn't have `:` character.
-     */
-    bool getString(std::string line, std::string &value);
-
-
-    /**
-     * - Returns true if "whatToFind" is found withint "whereToFind"
+     * Returns true if "whatToFind" is found withint "whereToFind"
      * 
      * If "whereToFind" starts with "LETTER:/" or "LETTER:\\" or "/", will search within a file in specified path. 
-     * @param index returned value of -1 if not found, or a number, which will be an index of the first "whatToFind" char in "whereToFind" string.
-     * @return returns `true` if found.
+     * @param index -1 or a number, which will be an index of the first "whatToFind" char in "whereToFind" string 
      */
     bool FIND(std::string whatToFind, std::string &whereToFind, int &index);
 
@@ -524,17 +402,5 @@ namespace customcpp{
      * @param file path to a file.
      */
     void TRUNCATEFILE(int line, std::string file);
-
-    ///////////////////////////////////////////////
-        /* math */
-
-    /* Returns an angle in radians between 2 points.*/
-    float angleBetweenTwoPoints(pixel origin, pixel point);
-
-    /* returns radians converted to degrees */
-    float deg(float rads);
-
-    /* Returns degrees converted to radians */
-    float rad(float degrees);
 }
 #endif

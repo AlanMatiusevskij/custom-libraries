@@ -162,12 +162,14 @@ customsdl::UI *customsdl::UI::ui = nullptr;
                 drawToSurface(surface, {x, y}, clr, blend);
     }
 
-    HWND customsdl::getWindowHandle(SDL_Window *window){
-        SDL_SysWMinfo wmInfo;
-        SDL_VERSION(&wmInfo.version);
-        SDL_GetWindowWMInfo(window, &wmInfo);
-        return wmInfo.info.win.window;
-    }
+    #ifdef _WIN32
+        HWND customsdl::getWindowHandle(SDL_Window *window){
+            SDL_SysWMinfo wmInfo;
+            SDL_VERSION(&wmInfo.version);
+            SDL_GetWindowWMInfo(window, &wmInfo);
+            return wmInfo.info.win.window;
+        }
+    #endif
 
 /* UI functions */
     bool customsdl::UI::layerCheck(void *ptr){
@@ -644,11 +646,10 @@ customsdl::UI *customsdl::UI::ui = nullptr;
             if(str->stickX)
                 if(str->flags & UIFLAGS::HORIZONTAL_SCROLLBAR_STICK)
                     str->shiftx = str->rect.w-bar_width-1;
-        
         if(!(str->flags & UIFLAGS::NO_VERTICAL_SCROLLBAR) && str->ratioy > 1)
-            fillSurfaceRect(str->vert_bar, ui->sDisplay, ui->data.bar_color, true);
+            fillSurfaceRect(str->vert_bar, ui->sDisplay, ui->data.bar_color, false);
         if(!(str->flags & UIFLAGS::NO_HORIZONTAL_SCROLLBAR) && str->ratiox > 1)
-            fillSurfaceRect(str->horiz_bar, ui->sDisplay, ui->data.bar_color, true);
+            fillSurfaceRect(str->horiz_bar, ui->sDisplay, ui->data.bar_color, false);
 
         /* If it's button scrollbox, determine which hovered and pressed */
             if(str->whichScrollbox == 2){
@@ -690,6 +691,8 @@ customsdl::UI *customsdl::UI::ui = nullptr;
             /* update time variables */
             then = now;
             CHECK = true;
+
+            //customcpp::upsAverage(true);
 
             /* Update mouse positions, poll events */
             SDL_PollEvent(ui->data.event);

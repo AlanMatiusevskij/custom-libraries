@@ -12,7 +12,7 @@ using namespace customcpp;
 #include<SDL2/SDL_syswm.h>
 
 //Freetype library
-#include<ft2build.h>
+#include<freetype2/ft2build.h>
 #include FT_FREETYPE_H
 
 //////////////////////
@@ -160,7 +160,7 @@ namespace customsdl{
          if(ui == nullptr) ui = new UI();
 
          if( UPS < 0 ) UPS = 30; /* Default value */
-         ui->ui_ups = UPS;
+         ui->ui_ups = int(float(1000)/float(UPS));
          ui->data.renderer = renderer;
          ui->data.event = event_struct;
          ui->data.wind_width = wind_width;

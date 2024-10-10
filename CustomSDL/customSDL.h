@@ -12,7 +12,7 @@ using namespace customcpp;
 #include<SDL2/SDL_syswm.h>
 
 //Freetype library
-#include<ft2build.h>
+#include<freetype2/ft2build.h>
 #include FT_FREETYPE_H
 
 //////////////////////
@@ -145,6 +145,7 @@ namespace customsdl{
       * When this object exists, to retrieve a pointer to it, use `customsdl::UI::get_pointer()`.
       * 
       * Calling `UI::init` function a second time will just overwrite the given parameters in the same way as modifying `customsdl::UI::data` struct.
+      * @param window a pointer to the main window.
       * @param renderer a pointer to the main window's renderer target.
       * @param event_struct a pointer to the main SDL event structure.
       * @param wind_width the width of the main window.
@@ -156,11 +157,12 @@ namespace customsdl{
       * @param bar_color horizontal and vertical scroll bar's colors.
       * @param defaultFontPath The default .ttf font path, which is used when calling a render_text() function without specifying a font path.
       */
-      static UI* init(SDL_Renderer *renderer, SDL_Event *event_struct, int wind_width, int wind_height,int UPS, color outline_color, color background_color, color hovered_color, color bar_color, std::string defaultFontPath){
+      static UI* init(SDL_Window *window, SDL_Renderer *renderer, SDL_Event *event_struct, int wind_width, int wind_height,int UPS, color outline_color, color background_color, color hovered_color, color bar_color, std::string defaultFontPath){
          if(ui == nullptr) ui = new UI();
 
          if( UPS < 0 ) UPS = 30; /* Default value */
-         ui->ui_ups = UPS;
+         ui->ui_ups = int(float(1000)/float(UPS));
+         ui->data.window = window;
          ui->data.renderer = renderer;
          ui->data.event = event_struct;
          ui->data.wind_width = wind_width;
@@ -314,13 +316,39 @@ namespace customsdl{
          void renderButtonScrollBox(std::vector<std::string> entries, SDL_Rect rect, color clr, int orderInLayer, int fontSize, void (*onClick)(std::string), Uint32 flags);
       }scrollbox;
 
-      ////////////////////
+      /////////////////////
 
-      struct slider{/*TODO*/}slider;
+      // struct slider{
+      //    /**
+      //     * 
+      //     */
+      //    void renderSlider(int &value, int minValue, int maxValue, SDL_Rect rect, color clr, orderInLayer, Uint32)
+      // }slider;
 
       //////////////////////////////
 
+      struct draw{
+         /**
+          * 
+          */
+         void drawLine(point point0, point point1, color clr, int orderInLayer);
+
+         /**
+          * 
+          */
+         void drawRect(SDL_Rect rect, color clr, int orderInLayer);
+
+         /**
+          * 
+          */
+         void drawSurface(SDL_Surface *surf32RGBA, SDL_Rect rect, int orderInLayer);
+
+      }draw;
       /* Functions: draw a line, draw a rect, display an image, text input ... */
+
+      //////////////////////
+
+      //Todo text input. fix numbers.
 
       //////////////////////
 
@@ -337,6 +365,7 @@ namespace customsdl{
       /////////////////////
 
       struct __data_struct{
+         SDL_Window *window;
          /* a pointer to the main window's renderer target. */
          SDL_Renderer* renderer;
          /* a pointer to the main SDL event structure. */
@@ -355,6 +384,10 @@ namespace customsdl{
          color bar_color;
          /* The time (in millisec.) to wait before function calls when a button with a given `TODO (Rephrase): button_held` function is held. */
          int hold_wait = 500;
+         /* Disable polling events during UI::update */
+         bool not_poll_events = false;
+         /* Disable polling mouse state during UI::update */
+         bool not_poll_mouse_state = false;
          /* The default .ttf font path, which is used when calling a render_text() function without specifying a font path. */
          std::string default_font;
       };
@@ -363,6 +396,9 @@ namespace customsdl{
       __data_struct data;
       /*  the time in milliseconds before each update. Recommended value is 1000/30 (30= updates per second). Entering 0 will disable UPS limit. (UPS = Updates Per Second). */
       int ui_ups;
+      bool pressed_qm; /* One time check if a button was pressed*/
+      bool unpressed_qm; /* One time check if a button was unpressed*/
+      int mx, my; /* Mouse positions */
 
       //////////
 
@@ -493,6 +529,19 @@ namespace customsdl{
          /* ... */
          void __CORE_SCROLLBOX(SCROLLBOX_STRUCT *str);
 
+         struct DRAW_STRUCT{
+            color clr;
+            bool draw_rect = false;
+            SDL_Rect rect;
+
+            bool draw_line = false;
+            point point0;
+            point point1;
+
+            SDL_Surface *surf = nullptr;
+         };
+         void __rend_draw(DRAW_STRUCT *str);
+
 
       /* Object lists*/
          /* A struct for convenience to hold an object and its order in layer.*/
@@ -501,16 +550,13 @@ namespace customsdl{
             BUTTON_STRUCT *BUTTON = nullptr;
             TEXT_STRUCT *TEXT = nullptr;
             SCROLLBOX_STRUCT *SCROLLBOX = nullptr;
+            DRAW_STRUCT *DRAW = nullptr;
             int order_in_layer;
          };
          /* A vector array that contains information about all active objects. */
          std::vector<__object_layer_pos_struct> layers;
          /* Previous list of objects and layers. If these don't match, something changed and everything must be re-rendered. */
          std::vector<__object_layer_pos_struct> layers_old;
-
-      bool pressed_qm; /* One time check if a button was pressed*/
-      bool unpressed_qm; /* One time check if a button was unpressed*/
-      int mx, my; /* Mouse positions */
    };
 }
 

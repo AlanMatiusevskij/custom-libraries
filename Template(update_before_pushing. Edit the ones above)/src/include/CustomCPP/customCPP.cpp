@@ -61,11 +61,6 @@ std::string customcpp::strtolower(std::string in){
     return _return;
 }
 
-bool customcpp::commparePoints(point point1, point point2){
-    if(point1.x == point2.x && point1.y == point2.y) return true;
-    return false;
-}
-
 ///////////////////////////////
 
 int customcpp::upsAverage(bool _cout){
@@ -91,16 +86,14 @@ int customcpp::upsAverage(bool _cout){
 std::string customcpp::intToString(int numb){
     std::string _return_backwards = "";
 
-    bool negative = false;
     if(numb == 0) _return_backwards = "0";
-    if(numb < 0) negative = true;
 
     /* Conver the number backwards into a string. */
     while(numb != 0){
-        _return_backwards += char(std::abs(numb)%10+48);
+        _return_backwards += char(numb%10+48);
         numb/=10;
     }
-    if(negative)_return_backwards+='-';
+
     /* Reverse the number. */
     std::string _return = "";
     for(int i = _return_backwards.size()-1; i>=0; i--)
@@ -112,18 +105,9 @@ std::string customcpp::intToString(int numb){
 int customcpp::stringToInt(std::string string){
     /* Empty string shall be nothing, which is 0. */
     if(string.size() == 0) return 0;
-    int negative = 1;
-    if(string[0] == '-') negative = -1;
-
-    /* remove non-numbers */
-    std::string str = "";
-    for(char &chr : string)
-        if(chr >= '0' && chr <= '9') str+=chr;
-    string = str;
 
     int _return = 0;
     int multiplier = 1;
-    
     for(int i = string.size()-1; i >= 0; i--){
         if(i == 0 && string[i] == '-') _return*=-1;
         else if(i!=0 && string[i] == '-') return 0;
@@ -132,7 +116,7 @@ int customcpp::stringToInt(std::string string){
         multiplier*=10;
     }
 
-    return _return*negative;
+    return _return;
 }
 
 std::string customcpp::doubleToString(double in, int precision){
@@ -179,52 +163,6 @@ double customcpp::stringToDouble(std::string in){
     if(in[0] == '-') _return*=-1;
     return _return;
 }
-
-std::string customcpp::floatToString(float in, int precision){
-    std::string _return = "";
-    if(in == 0) return "0";
-
-    /* Seperate integer and fractional parts. */
-    int whole = int(in);
-    float fraction = in - whole;
-
-    /* Save the integer part. */
-    _return = intToString(whole);
-    _return += ".";
-
-    /* Save fractional part to the provided precision. */
-    _return += intToString(int(fraction*std::pow(10, precision)));
-
-    return _return;
-}
-
-float customcpp::stringToFloat(std::string in){
-    /* Empty string shall be nothing, which is 0. */
-    if(in.size() == 0) return 0;
-    
-    float _return = 0;
-    int k = 0;
-    if(in[0] == '-') k = 1;
-    float multiplier = 0.1;
-    while(true){
-        if(in.size() == k) break;
-        if(in[k] == ',' || in[k] == '.')
-            break;
-        k++;
-        multiplier*=10;
-    }
-    
-    for(int i = 0; i<in.size(); i++){
-        if(in[i] != '-' && in[i] != ',' && in[i] != '.'){
-            _return += ((int)in[i]-48)*multiplier;
-            multiplier/=10;
-        }
-    }
-
-    if(in[0] == '-') _return*=-1;
-    return _return;
-}
-
 #ifdef _WIN32
 wchar_t* customcpp::charToLPWSTR(const char* charArr){
     int length = MultiByteToWideChar(CP_UTF8, 0, charArr, -1, nullptr, 0);
@@ -373,54 +311,6 @@ bool customcpp::isDriveOccupied(char &driveLetter) {
     return (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-#else
-
-std::vector<std::string> customcpp::listDirectories(const char* pth){
-    std::string path = std::string(pth);
-    if(path[0] == '~'){
-        path.erase(path.begin());
-        path = "/home/" + getCurrentUserName() + path;
-    }
-    
-    DIR* dir = opendir(path.c_str());
-    struct dirent* entry;
-    
-    if(dir == nullptr) {
-        std::cerr << "Error opening directory: " << path << std::endl;
-        return {};
-    }
-
-    std::vector<std::string> list;
-    while ((entry = readdir(dir)) != nullptr) {
-        // Check if entry is a directory
-        if (entry->d_type == DT_DIR) {
-            // Skip the "." and ".." entries
-            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-                list.push_back(entry->d_name);
-            }
-        }
-    }
-
-    closedir(dir);
-    return list;
-}
-
-void customcpp::childFunction(void (*foo)(void*), void* data){
-    pid_t pidt;
-    pidt = fork();
-    
-    if(pidt == 0){
-        /* Child*/
-        foo(data);
-        _exit(0);
-    }
-    else{
-        /* Parent*/
-        //waitpid(pidt, NULL, 0);
-    }
-    return;
-}
-
 #endif
 
 //////////////////////
@@ -541,7 +431,6 @@ bool customcpp::backgroundProcess(std::string command, bool waitForQuit, int ID)
                 return true;
             }
         }
-
     #endif    
     return true;
 }
@@ -838,270 +727,48 @@ std::string customcpp::getExecutablePath() {
     return path;
 }
 
-/* it is enough for now */
-bool customcpp::checkGivenArgument(char *argument, std::string requiredArgument, bool singleLetter){
-	if(singleLetter){
-		char charArg;
-		for(int i = 0; i < sizeof(argument)/sizeof(char); i++)
-			if(argument[i] != '-'){
-				charArg = argument[i];
-				break;
-			}
-		char charWanted;
-		for(int i = 0; i < requiredArgument.size(); i++)
-			if(requiredArgument[i] != '-'){
-				charWanted = requiredArgument[i];
-				break;
-			}
-
-		if(charWanted == charArg) return true;
-	}
-	else{
-		if(sizeof(argument)/sizeof(char) == requiredArgument.size()){
-			for(int i = 0; i < requiredArgument.size(); i++){
-				if(requiredArgument[i] != argument[i]) return false;
-			}
-			return true;
-		}
-	} 
-
-	return false;
-}
-
 ///////////////////////////////////////////////////////////////////////////
 
-std::string customcpp::findLine(std::string keyword, point area, std::string pathToFile){
-    if(area.x < 0) return "";
-
+std::vector<std::string> customcpp::findRow(std::string keyword, std::string pathToFile){
     std::ifstream file(pathToFile);
     if(!file){
-        std::cerr << "Couldn't open file \"" << pathToFile << "\"\n";
+        std::cout << "Couldn't open file \"" << pathToFile << "\"\n";
         return {{}};
     }
 
     std::string line;
     int index = -1;
-    bool findSpecificArea = false;
 
-    auto check = [&keyword](std::string line)-> bool {
-        if(line.size() != 0){
-            int x = 0;
-            while(line[x] == ' ') x++;
-            if(line[x] == '#') return false;
+    while(!file.eof()){
+        std::getline(file, line);
 
-            std::string key = "";
-            for(int i = x; i < line.size(); i++)
-                if(key == keyword) return true;
-                else key+=line[i];
-        }
-        return false;
-    };
-
-    if(area.x != area.y) findSpecificArea = true; 
-    /*kinda repeated myself three times. Fix this later*/
-    if(!findSpecificArea){
-        while(!file.eof()){
-            std::getline(file, line);
-            if(check(line)){
-                file.close();
-                return line;
+        /* Get the keyword */
+        std::string key = "";
+        for(int i = 0; i < line.size(); i++)
+            if(line[i] == ' '){
+                if(key == keyword){
+                    index = i+1;
+                    break;
+                }
+                key+=' ';
             }
-        }
+            else key+=line[i];
+
+        if(index != -1) break;
     }
-    else{
-        /* Move to the nth line */
-        int linenumb = 1;
-        while(!file.eof() && linenumb < area.x){
-            std::getline(file, line);
-            linenumb++;
-        }
 
-        if(!file.eof()){
-            /* Do checks until reached end of file or specified areas */
-            bool allLeft = false;
-            if(area.x > area.y) allLeft = true;
-
-            if(allLeft){
-                while(!file.eof()){
-                    std::getline(file, line);
-                    if(check(line)){
-                        file.close();
-                        return line;
-                    }
-                }
-            }
-            else{
-                while(!file.eof() && linenumb <= area.y){
-                    linenumb++;
-                    std::getline(file, line);
-                    if(check(line)){
-                        file.close();
-                        return line;
-                    }
-                }
-            }
+    /* Get the data */
+    std::vector<std::string> data {};
+    if(index != -1){
+        data.push_back("");
+        for(int i = index; i < line.size(); i++){
+            if(line[i] == ' ') data.push_back("");
+            else data[data.size()-1] += line[i];
         }
     }
 
     file.close();
-    return "";
-}
-
-bool customcpp::getBoolean(std::string line, bool &value){
-    bool success = false;
-
-    int i = 0;
-    while(i<line.size()){
-        if(line[i] == ':') break;
-        i++;
-    }
-    i++;
-    std::string var = "";
-    while(i<line.size()){
-        if(line[i] != ' ') break;
-        i++;
-    }
-    while(i < line.size()){
-        if(line[i] == ' ' || line[i] == '\n') break;
-        var+=line[i];
-        i++;
-    }
-    /* all characters to lowercase */
-    std::transform(var.begin(), var.end(), var.begin(), [](unsigned char c){ return std::tolower(c); });
-
-    if(var == "true"){
-        success = true;
-        value = true;
-    }
-    else if(var == "false"){
-        success = true;
-        value = false;
-    }
-
-    return success;
-}
-
-bool customcpp::getScalar(std::string line, double &value){
-    bool success = false;
-    int i = 0;
-    while(i < line.size()){
-        if(line[i] == ':') break;
-        i++;
-    }
-    i++;
-    
-    std::string var = "";
-    while(i < line.size()){
-        if(line[i] != ' '){
-            /* Number string has a character, */
-            if(line[i] != ',' && line[i] != '.') return false;
-            break;
-        }
-        i++;
-    }
-    while(i < line.size()){
-        if(line[i] == ' ' || line[i] == '\n' || i+1 == line.size()){
-            /* assume that reaching the end of point of possible number represented in a string, the extraction is successful. */
-            success = true;
-            value = stringToDouble(var);
-            break;
-        }
-        var+=line[i];
-        i++; 
-    }
-
-    return success;
-}
-
-bool customcpp::getString(std::string line, std::string &value){
-    /* true if `:` is found */
-    bool foundchar = false;
-    for(int i = 0; i < value.size(); i++)
-        if(value[i] == ':'){
-            foundchar = true;
-            break;
-        }
-
-    if(foundchar){
-        int i = 0;
-        std::string var = "";
-        while(i < value.size())
-            if(value[i] == ':') break;
-            else i++;
-        i++;
-
-        while(i < value.size())
-            if(value[i] != ' ') break;
-            else i++;
-
-        while(i < value.size())
-            var+=value[i];
-
-        /* Remove the trailing whitespaces*/
-        for(int i = var.size() -1; i >=0; i--)
-            if(var[i] == ' ') var.erase(var.begin() + i); 
-            else break;
-
-            value = var;
-    }
-
-    return foundchar;
-}
-
-customcpp::point customcpp::findHeader(std::string headerName, std::string pathToFile){
-    point area = {-1, 0};
-
-    auto removeTrailingAndLeadingWhitespaces = [](std::string in)->std::string {
-        /* Clear possible whitespaces and new line at the end*/
-        std::string _return = "";
-        int indx = 0;
-        for(indx; indx < in.size(); indx++)
-            if(in[indx] == '['){
-                indx++;
-                break;
-            }
-
-        for(indx; indx < in.size(); indx++)
-            if(in[indx] == ']') break;
-            else _return+=in[indx];
-        return _return;
-    };
-
-    headerName = removeTrailingAndLeadingWhitespaces(headerName);
-
-    std::ifstream file(pathToFile);
-    std::string str;
-    int line = 1;
-
-    while(!file.eof()){
-        std::getline(file, str);
-        int i = 0;
-        while(str[i] == ' ') i++;
-
-        if(str[i] != '#'){
-            str = removeTrailingAndLeadingWhitespaces(str);
-            if(str == headerName){
-                line++;
-                area.x = line;
-                break;
-            }
-        }
-        line++;
-    }
-
-    while(!file.eof()){
-        std::getline(file, str);
-        int i = 0;
-        while(str[i] == ' ') i++;
-
-        if(str[i] == '['){
-            area.y = line - 1;
-            break;
-        }
-        line++;
-    }
-
-    return area;
+    return data;
 }
 
 bool customcpp::FIND(std::string whatToFind, std::string &whereToFind, int &indx){
@@ -1159,16 +826,3 @@ void customcpp::TRUNCATEFILE(int line, std::string file){
     write.close();
     return;
 }
-
-float customcpp::rad(float degrees){
-    return degrees*pi/180;
-}
-
-float customcpp::deg(float rads){
-    return rads*180/pi;
-}
-
-float customcpp::angleBetweenTwoPoints(pixel origin, pixel point){
-    return atan2(origin.y - point.y, origin.x - point.x);
-}
-
